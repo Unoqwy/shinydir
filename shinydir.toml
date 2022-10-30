@@ -1,0 +1,65 @@
+#----------------------------#
+#      General Settings      #
+#----------------------------#
+
+[settings]
+color = true # color terminal output
+
+#----------------------------#
+#         Directories        #
+#----------------------------#
+
+[dir."$HOME"]
+allowed-dirs = [
+    "Downloads",
+    "Pictures",
+    "Desktop",
+    "Videos",
+    "Music",
+    "Documents",
+    "\.*", # allow any hidden directory
+]
+allowed-files = [
+    "\.*", # allow any hidden file
+]
+
+[dir."$HOME/Videos"]
+recursive-rules = true # sub-folders will have the same rules
+# no 'allowed-dirs' means any dir is valid
+allowed-files = [
+    "*\.(mp4|mov|mkv)$"
+]
+
+[dir."$HOME/Music"]
+recursive-rules = true
+allowed-files = [
+    "*\.(mp3|m4a|flac|opus)$"
+]
+
+[dir."$HOME/Downloads"]
+allowed-dirs = [
+    "Videos",
+    "Music",
+    "Misc",
+]
+# no 'allow-files' means any file is valid
+
+#----------------------------#
+#       Auto Move Rules      #
+#----------------------------#
+
+[[automove.rules]]
+parent = "$HOME/Downloads"
+match = "*\.(mp3|m4a|flac|opus)$"
+to = "$HOME/Downloads/Music"
+
+[[automove.rules]]
+parent = "$HOME/Downloads"
+match = "*\.(mp4|mov|mkv)$"
+to = "$HOME/Downloads/Videos"
+
+[[automove.rules]]
+parent = "$HOME/Downloads"
+type = "directory"
+to = "$HOME/Downloads/Misc"
+
