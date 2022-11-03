@@ -1,6 +1,6 @@
 use std::fs;
 
-use checker::CheckerResult;
+use checker::{CheckerResult, Report};
 use config::Config;
 
 mod automove;
@@ -28,22 +28,31 @@ fn main() -> Result<(), anyhow::Error> {
         }
 
         if let CheckerResult::Ok(report) = result {
-            let rel_files = report
-                .issues
-                .iter()
-                .flat_map(|issue| issue.path().strip_prefix(&report.path).ok())
-                .map(|path| path.to_string_lossy())
-                .collect::<Vec<_>>()
-                .join(", ");
-            println!(
-                "Unexpected Files ({}): {}",
-                report.path.to_string_lossy(),
-                rel_files
-            );
+            print_report(report);
         } else {
             eprintln!("{}", result.format_err());
         }
     }
 
     Ok(())
+}
+
+fn print_report(report: Report) {
+    if report.issues.is_empty() {
+        println!("Directory {} is all good!", report.path.to_string_lossy());
+        return;
+    }
+
+    let rel_files = report
+        .issues
+        .iter()
+        .flat_map(|issue| issue.path().strip_prefix(&report.path).ok())
+        .map(|path| path.to_string_lossy())
+        .collect::<Vec<_>>()
+        .join(", ");
+    println!(
+        "Unexpected Files ({}): {}",
+        report.path.to_string_lossy(),
+        rel_files
+    );
 }
