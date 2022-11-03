@@ -25,7 +25,7 @@ allowed-files = [
 
 [dir."$HOME/Videos"]
 recursive = true # sub-folders will have the same rules
-# no 'allowed-dirs' means any dir is valid
+# no 'allowed-dirs' means any directory is valid
 allowed-files = [
     { ext = "mp4" },
     { ext = "mov" },
@@ -50,18 +50,16 @@ allowed-files = [
 #       Auto Move Rules      #
 #----------------------------#
 
-[[automove.rules]]
-parent = "$HOME/Downloads"
-match = ".*\\.(mp3|m4a|flac|opus)$"
-to = "$HOME/Downloads/Music"
+[automove]
+report-info = "count" # display how many files could be
+                      # automatically moved at the end of a report
+                      # options are: "no", "any", "count"
 
 [[automove.rules]]
-parent = "$HOME/Downloads"
-match = ".*\\.(mp4|mov|mkv)$"
-to = "$HOME/Downloads/Videos"
-
-[[automove.rules]]
-parent = "$HOME/Downloads"
-type = "directory"
-to = "$HOME/Downloads/Misc"
-
+parent = "$HOME"
+match = [
+    { ext = "mp4" },
+    { ext = "mov" },
+    { ext = "mkv" },
+]
+to = "$HOME/Videos"

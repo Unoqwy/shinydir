@@ -10,6 +10,8 @@ pub struct Config {
 
     #[serde(rename = "dir")]
     pub directories: HashMap<String, DirectoryConfig>,
+
+    pub automove: AutoMoveConfig,
 }
 
 /// General application settings
@@ -36,6 +38,42 @@ pub enum MatchRule {
     Name { name: String },
     Extension { ext: String },
     Pattern { pattern: String },
+}
+
+/// Auto-Move configuration
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct AutoMoveConfig {
+    pub report_info: AutoMoveReportInfo,
+
+    #[serde(default)]
+    pub rules: Vec<AutoMoveRule>,
+}
+
+/// What kind of information about Auto-Move files to print
+/// at the end of a report
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum AutoMoveReportInfo {
+    /// Disable this extra info
+    No,
+    /// Display if any file can be automatically moved
+    Any,
+    /// Display the number of files that can be automatically moved
+    Count,
+}
+
+/// A rule to automatically move files
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct AutoMoveRule {
+    /// Parent directory
+    pub parent: String,
+    /// File matcher (applied of contents of parent directory)
+    #[serde(alias = "match")]
+    pub match_rules: Vec<MatchRule>,
+    /// Which directory to move it to
+    pub to: String,
 }
 
 /// Compiles a list of (filename) match rules into a [`RegexSet`] for fast checks
