@@ -3,11 +3,15 @@ use std::path::PathBuf;
 
 use colored::Colorize;
 
-use crate::automove::AutoMoveResult;
 use crate::checker::{CheckerResult, Report, ReportIssue};
 use crate::config::{AutoMoveReportInfo, Config, Settings};
 
-pub fn execute(config: &Config, target: Option<PathBuf>, list: bool) -> anyhow::Result<()> {
+pub fn execute(
+    config: &Config,
+    config_dir: PathBuf,
+    target: Option<PathBuf>,
+    list: bool,
+) -> anyhow::Result<()> {
     // Setup checker
     let parent = target.map(fs::canonicalize).transpose()?;
     let checker = crate::checker::from_config(&config, parent.clone())?;
@@ -42,7 +46,7 @@ pub fn execute(config: &Config, target: Option<PathBuf>, list: bool) -> anyhow::
     }
 
     // Automove info
-    let automove = crate::automove::from_config(config, parent)?;
+    let automove = crate::automove::from_config(config, config_dir, parent)?;
     match config.automove.report_info {
         AutoMoveReportInfo::Any if automove.would_move_any() => {
             if config.settings.color {
@@ -56,15 +60,7 @@ pub fn execute(config: &Config, target: Option<PathBuf>, list: bool) -> anyhow::
             }
         }
         AutoMoveReportInfo::Count => {
-            let count = automove
-                .run()
-                .iter()
-                .flat_map(|result| match result {
-                    AutoMoveResult::Ok { entries } => Some(entries),
-                    _ => None,
-                })
-                .flatten()
-                .count();
+            let count = automove.rules.iter().fold(0, |a, b| a + b.count_move());
             if count > 0 {
                 if config.settings.color {
                     println!(

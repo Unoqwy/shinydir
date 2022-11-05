@@ -6,13 +6,14 @@ use crate::config::Config;
 
 pub fn execute(
     config: &Config,
+    config_dir: PathBuf,
     target: Option<PathBuf>,
     list: bool,
     dry_run: bool,
 ) -> anyhow::Result<()> {
     // Setup automove
     let parent = target.map(fs::canonicalize).transpose()?;
-    let automove = crate::automove::from_config(config, parent)?;
+    let automove = crate::automove::from_config(config, config_dir, parent)?;
 
     // Run
     let results = automove.run();

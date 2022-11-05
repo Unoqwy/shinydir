@@ -77,6 +77,8 @@ pub struct AutoMoveRule {
     pub match_rules: Vec<MatchRule>,
     /// Which directory to move it to
     pub to: String,
+    /// Path to a script that gives the output filename
+    pub to_script: Option<String>,
 }
 
 /// Compiles a list of (filename) match rules into a [`RegexSet`] for fast checks

@@ -68,3 +68,18 @@ match = [
     { ext = "mkv" },
 ]
 to = "$HOME/Videos"
+
+[[automove.rules]]
+parent = "$HOME/Pictures/Screenshots"
+match = [
+    { ext = "png" },
+    { ext = "jpg" },
+]
+to = "$HOME/Pictures/Screenshots"
+
+# pass each matched file to the following script that returns placement filename
+# the script path is relative to the parent directory of this config file
+# Note: `to` is still required! It will be the base path of any relative filename the script returns.
+#       However, the script is free to return absolute paths in which case `to` will be ignored
+# WARNING! This can slow down auto-move drastically, use with care! (it will not slow down count check report info count though)
+to-script = "examples/dated-monthly.sh"
