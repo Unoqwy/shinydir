@@ -99,11 +99,16 @@ pub fn execute(
                     }
                 }
                 let new_err = match entry.move_to.try_exists() {
-                    Ok(true) => Some(anyhow::format_err!(
+                    Ok(true) if !config.automove.allow_overwrite => Some(anyhow::format_err!(
                         "Moving to {} would overwrite a file",
                         entry.move_to.to_string_lossy()
                     )),
-                    Ok(false) if !dry_run => fs::rename(&entry.file, &entry.move_to)
+                    Err(err) => Some(anyhow::format_err!(
+                        "Cannot check overwrite status for {}: {}",
+                        entry.move_to.to_string_lossy(),
+                        err
+                    )),
+                    _ if !dry_run => fs::rename(&entry.file, &entry.move_to)
                         .map_err(|err| {
                             anyhow::format_err!(
                                 "Couldn't move {} to {}: {}",
@@ -113,12 +118,7 @@ pub fn execute(
                             )
                         })
                         .err(),
-                    Ok(false) => None,
-                    Err(err) => Some(anyhow::format_err!(
-                        "Cannot check overwrite status for {}: {}",
-                        entry.move_to.to_string_lossy(),
-                        err
-                    )),
+                    _ => None,
                 };
                 if let Some(err) = new_err {
                     *entry_res = Err(err);

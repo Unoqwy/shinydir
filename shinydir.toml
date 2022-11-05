@@ -62,6 +62,9 @@ report-info = "count" # display how many files could be
                       # automatically moved at the end of a report
                       # options are: "no", "any", "count"
 
+allow-overwrite = false # leave this false if you're not sure
+                        # If true, it will allow overwriting files
+
 force-dry-run = true # force dry run setting
                      # This is a security for new users. Turn it off (= false) to use auto-move!
 

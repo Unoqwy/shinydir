@@ -60,6 +60,10 @@ pub struct AutoMoveConfig {
     #[serde(default)]
     pub force_dry_run: bool,
 
+    // Here be dragons
+    #[serde(default)]
+    pub allow_overwrite: bool,
+
     #[serde(default)]
     pub rules: Vec<AutoMoveRule>,
 }
