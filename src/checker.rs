@@ -54,10 +54,11 @@ pub struct Report {
     pub issues: Vec<ReportIssue>,
 }
 
-/// The type of issue of a report
+/// A misplaced file
 #[derive(Debug, Clone)]
-pub enum ReportIssue {
-    UnexpectedFile { path: PathBuf, metadata: Metadata },
+pub struct ReportIssue {
+    path: PathBuf,
+    metadata: Metadata,
 }
 
 impl Checker {
@@ -180,7 +181,7 @@ impl FileRule {
             if metadata.is_none() {
                 metadata = Some(resolve_metadata(dir_entry)?);
             }
-            Ok(Some(ReportIssue::UnexpectedFile {
+            Ok(Some(ReportIssue {
                 path: dir_entry.path(),
                 metadata: metadata.unwrap(),
             }))
@@ -188,7 +189,39 @@ impl FileRule {
     }
 
     pub fn matches_dir_entry(&self, dir_entry: &DirEntry) -> anyhow::Result<bool> {
-        self.test_from_dir_entry(dir_entry).map(|opt| opt.is_none())
+        let res = match self {
+            Self::Any => true,
+            Self::None => false,
+            Self::MergeAnd(merge) => {
+                for rule in merge {
+                    if rule.matches_dir_entry(dir_entry)? {
+                        return Ok(true);
+                    }
+                }
+                false
+            }
+            Self::MergeOr(merge) => {
+                if merge.is_empty() {
+                    return Ok(true);
+                }
+                for rule in merge {
+                    if rule.matches_dir_entry(dir_entry)? {
+                        return Ok(true);
+                    }
+                }
+                return Ok(false);
+            }
+
+            Self::Type(file_type) => {
+                let metadata = Some(resolve_metadata(dir_entry)?);
+                match file_type {
+                    FileType::Directory => metadata.as_ref().unwrap().is_dir(),
+                    FileType::File => metadata.as_ref().unwrap().is_file(),
+                }
+            }
+            Self::Name(pattern) => pattern.is_match(dir_entry.file_name().to_str().unwrap()),
+        };
+        Ok(res)
     }
 }
 
@@ -218,19 +251,15 @@ impl CheckerResult {
 
 impl ReportIssue {
     pub fn path(&self) -> &Path {
-        match self {
-            ReportIssue::UnexpectedFile { path, .. } => &path,
-        }
+        &self.path
     }
 
     pub fn file_metadata(&self) -> &Metadata {
-        match self {
-            ReportIssue::UnexpectedFile { metadata, .. } => &metadata,
-        }
+        &self.metadata
     }
 }
 
-pub fn from_config(config: &Config, parent: Option<PathBuf>) -> Result<Checker, anyhow::Error> {
+pub fn from_config(config: &Config, parent: Option<PathBuf>) -> anyhow::Result<Checker> {
     let mut directories = Vec::new();
     for (dir_path, dir_config) in config.directories.iter() {
         let raw_path = shellexpand::env(dir_path)?;
@@ -276,7 +305,7 @@ pub fn from_config(config: &Config, parent: Option<PathBuf>) -> Result<Checker, 
         });
     }
 
-    directories.sort_by_cached_key(|dir| dir.path.to_path_buf());
+    directories.sort_by_cached_key(|dir| dir.path.clone());
     Ok(Checker {
         parent,
         directories,
