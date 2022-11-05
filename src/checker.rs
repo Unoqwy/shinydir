@@ -15,11 +15,13 @@ pub struct Checker {
 pub struct DirectoryChecker {
     pub path: PathBuf,
     pub recursive: bool,
+    pub recursive_ignore_rules: FileRule,
     pub rules: FileRule,
 }
 
 #[derive(Debug, Clone)]
 pub enum FileRule {
+    Any,
     MergeAnd(Vec<FileRule>),
     MergeOr(Vec<FileRule>),
 
@@ -90,10 +92,10 @@ impl DirectoryChecker {
                 }
             }
         };
-        self.check_dir(&self.path, self.recursive)
+        self.check_dir(&self.path)
     }
 
-    fn check_dir(&self, path: &Path, recursive: bool) -> CheckerResult {
+    fn check_dir(&self, path: &Path) -> CheckerResult {
         let dir_entries = match fs::read_dir(path) {
             Ok(entries) => entries,
             Err(_) => {
@@ -109,8 +111,16 @@ impl DirectoryChecker {
                 if let Ok(Some(issue)) = self.rules.test_from_dir_entry(&entry) {
                     issues.push(issue);
                 }
-                if recursive && entry.file_type().ok().map_or(false, |ft| ft.is_dir()) {
-                    if let CheckerResult::Ok(report) = self.check_dir(&entry.path(), recursive) {
+                if self.recursive && entry.file_type().ok().map_or(false, |ft| ft.is_dir()) {
+                    if self
+                        .recursive_ignore_rules
+                        .matches_dir_entry(&entry)
+                        .ok()
+                        .unwrap_or(false)
+                    {
+                        continue;
+                    }
+                    if let CheckerResult::Ok(report) = self.check_dir(&entry.path()) {
                         issues.extend(report.issues);
                     }
                 }
@@ -127,6 +137,9 @@ impl FileRule {
     pub fn test_from_dir_entry(&self, dir_entry: &DirEntry) -> anyhow::Result<Option<ReportIssue>> {
         let mut metadata = None;
         let res = match self {
+            Self::Any => {
+                return Ok(None);
+            }
             Self::MergeAnd(merge) => {
                 for rule in merge {
                     if let Some(issue) = rule.test_from_dir_entry(dir_entry)? {
@@ -136,6 +149,9 @@ impl FileRule {
                 return Ok(None);
             }
             Self::MergeOr(merge) => {
+                if merge.is_empty() {
+                    return Ok(None);
+                }
                 let mut issue = None;
                 for rule in merge {
                     // FIXME : This doesn't properly keep track of what issue to report to the user
@@ -168,6 +184,10 @@ impl FileRule {
                 metadata: metadata.unwrap(),
             }))
         }
+    }
+
+    pub fn matches_dir_entry(&self, dir_entry: &DirEntry) -> anyhow::Result<bool> {
+        self.test_from_dir_entry(dir_entry).map(|opt| opt.is_none())
     }
 }
 
@@ -227,6 +247,14 @@ pub fn from_config(config: &Config, parent: Option<PathBuf>) -> Result<Checker, 
             rules_file.push(FileRule::Name(compiled));
         }
 
+        // recursive ignore only applies on directories anyway, no need to ignore FileType::File here
+        let mut recursive_ignore_children = FileRule::Any;
+        if !dir_config.recursive_ignore_children.is_empty() {
+            let compiled =
+                crate::config::compile_match_rules(&dir_config.recursive_ignore_children)?;
+            recursive_ignore_children = FileRule::Name(compiled);
+        }
+
         let rules = FileRule::MergeOr(vec![
             FileRule::MergeAnd(rules_dir),
             FileRule::MergeAnd(rules_file),
@@ -234,6 +262,7 @@ pub fn from_config(config: &Config, parent: Option<PathBuf>) -> Result<Checker, 
         directories.push(DirectoryChecker {
             path,
             recursive: dir_config.recursive,
+            recursive_ignore_rules: recursive_ignore_children,
             rules,
         });
     }

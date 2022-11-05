@@ -26,6 +26,11 @@ allowed-files = [
 
 [dir."$HOME/Videos"]
 recursive = true # sub-folders will have the same rules
+recursive-ignore-children = [
+    # while performing recursive check, it will ignore these child directories
+    { name = ".gallery" },
+    { name = "CacheClip" },
+]
 # no 'allowed-dirs' means any directory is valid
 allowed-files = [
     { ext = "mp4" },
@@ -33,11 +38,14 @@ allowed-files = [
     { ext = "mkv" },
 ]
 
-# [dir."$HOME/Music"]
-# recursive = true
-# allowed-files = [
-#     ".*\\.(mp3|m4a|flac|opus)$"
-# ]
+[dir."$HOME/Music"]
+recursive = true
+allowed-files = [
+    { ext = "mp3" },
+    { ext = "m4a" },
+    { ext = "opus" },
+    { ext = "flac" },
+]
 
 # [dir."$HOME/Downloads"]
 # allowed-dirs = [
