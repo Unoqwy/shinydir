@@ -89,7 +89,9 @@ pub fn execute(
                             )
                         })
                         .collect::<Vec<_>>();
-                    println!("{}", line_entries.join("\n"));
+                    if !line_entries.is_empty() {
+                        println!("{}", line_entries.join("\n"));
+                    }
                 } else {
                     print_entries(&config.settings, rule, entries);
                 }
@@ -155,6 +157,55 @@ fn print_entries(
             },
             info.join(info_sep)
         );
+    }
+
+    let moved_to_dirs_no_dedup = entries
+        .iter()
+        .flat_map(|entry| entry.as_ref().ok())
+        .flat_map(|entry| entry.move_to.parent())
+        .map(|path| path.to_path_buf())
+        .collect::<Vec<_>>();
+    let mut moved_to_dirs = moved_to_dirs_no_dedup.clone();
+    moved_to_dirs.sort();
+    moved_to_dirs.dedup();
+
+    if moved_to_dirs.is_empty() {
+        for err in entries.iter().flat_map(|entry| entry.as_ref().err()) {
+            eprintln!("{}", format!("{}", err).bright_red().italic());
+        }
+        return;
+    }
+
+    let arrow = "=>";
+    let rel_dirs_it = moved_to_dirs
+        .iter()
+        .map(|path| {
+            let count = moved_to_dirs_no_dedup
+                .iter()
+                .filter(|&dir| path.eq(dir))
+                .count();
+            (path, count)
+        })
+        .map(|(path, count)| (path.strip_prefix(&rule.directory).unwrap_or(path), count));
+    if settings.color {
+        let mut tmp = rel_dirs_it
+            .map(|(path, count)| {
+                format!(
+                    "{} {}",
+                    path.to_string_lossy().bright_blue(),
+                    format!("({})", count).dimmed()
+                )
+            })
+            .collect::<Vec<_>>();
+        tmp.sort();
+        println!(
+            "{} {} {}",
+            arrow.black(),
+            "Moved To".bold(),
+            tmp.join(&format!("{}", ", ".bright_black()))
+        );
+    } else {
+        println!("{} Moved To: ", arrow)
     }
 
     for err in entries.iter().flat_map(|entry| entry.as_ref().err()) {
