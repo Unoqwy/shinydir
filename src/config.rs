@@ -70,6 +70,8 @@ pub enum AutoMoveReportInfo {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct AutoMoveRule {
+    /// Custom rule name
+    pub name: Option<String>,
     /// Parent directory
     pub parent: String,
     /// File matcher (applied of contents of parent directory)

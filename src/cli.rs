@@ -33,7 +33,7 @@ pub enum Commands {
         list: bool,
 
         /// Print files that would be affected without actually moving them
-        #[arg(id = "dry", long, action = clap::ArgAction::SetTrue)]
+        #[arg(id = "dry", short, long, action = clap::ArgAction::SetTrue)]
         dry_run: bool,
     },
 }

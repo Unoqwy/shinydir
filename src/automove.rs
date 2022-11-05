@@ -4,6 +4,8 @@ use std::os::unix::prelude::OsStringExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use anyhow::format_err;
+
 use crate::checker::FileRule;
 use crate::config::Config;
 
@@ -15,16 +17,22 @@ pub struct AutoMove {
 
 #[derive(Debug, Clone)]
 pub struct AutoMoveRule {
+    pub custom_name: Option<String>,
     pub directory: PathBuf,
     pub to: PathBuf,
     pub to_script: Option<PathBuf>,
     pub match_rules: FileRule,
 }
 
-#[derive(Debug, Clone)]
-pub enum AutoMoveResult {
-    DirDoesNotExist { directory: PathBuf },
-    Ok { entries: Vec<AutoMoveResultEntry> },
+#[derive(Debug)]
+pub enum AutoMoveResult<'a> {
+    DirDoesNotExist {
+        rule: &'a AutoMoveRule,
+    },
+    Ok {
+        rule: &'a AutoMoveRule,
+        entries: Vec<Result<AutoMoveResultEntry, anyhow::Error>>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -60,6 +68,12 @@ impl AutoMove {
 }
 
 impl AutoMoveRule {
+    pub fn display_name(&self) -> String {
+        self.custom_name
+            .clone()
+            .unwrap_or_else(|| self.directory.to_path_buf().to_string_lossy().to_string())
+    }
+
     /// Returns entries that should be moved if it didn't encounter any error
     pub fn run(&self) -> AutoMoveResult {
         self.run_on_path(&self.directory)
@@ -108,11 +122,7 @@ impl AutoMoveRule {
     fn run_on_path(&self, path: &Path) -> AutoMoveResult {
         let dir_entries = match fs::read_dir(path) {
             Ok(entries) => entries,
-            Err(_) => {
-                return AutoMoveResult::DirDoesNotExist {
-                    directory: path.to_path_buf(),
-                }
-            }
+            Err(_) => return AutoMoveResult::DirDoesNotExist { rule: self },
         };
 
         let mut result_entries = Vec::new();
@@ -134,9 +144,16 @@ impl AutoMoveRule {
                 if let Some(to_script) = &self.to_script {
                     let output = Command::new(to_script)
                         .arg(dir_entry.path().to_string_lossy().as_ref())
-                        .output()
-                        .unwrap();
-                    // FIXME : Report the error for the entry instead of unwrapping
+                        .output();
+                    if let Err(err) = output {
+                        result_entries.push(Err(format_err!(
+                            "Could not execute to_script for '{}': {}",
+                            dir_entry.file_name().to_string_lossy(),
+                            err
+                        )));
+                        continue;
+                    }
+                    let output = output.unwrap();
                     let utf8_filename = String::from_utf8_lossy(&output.stdout);
                     let utf8_filename_trimmed = utf8_filename.trim_end();
                     let trim_end_bytes = utf8_filename.len() - utf8_filename_trimmed.len();
@@ -161,11 +178,12 @@ impl AutoMoveRule {
                     file_metadata,
                     move_to,
                 };
-                result_entries.push(entry);
+                result_entries.push(Ok(entry));
             }
         }
 
         AutoMoveResult::Ok {
+            rule: self,
             entries: result_entries,
         }
     }
@@ -185,6 +203,7 @@ pub fn from_config(
         }
 
         rules.push(AutoMoveRule {
+            custom_name: config_rule.name.clone(),
             directory: PathBuf::from(shellexpand::env(&config_rule.parent)?.as_ref()),
             to: PathBuf::from(shellexpand::env(&config_rule.to)?.as_ref()),
             to_script: if let Some(path) = &config_rule.to_script {
@@ -204,6 +223,6 @@ pub fn from_config(
         });
     }
 
-    rules.sort_by_cached_key(|rule| rule.directory.clone());
+    rules.sort_by_cached_key(|rule| rule.display_name());
     Ok(AutoMove { parent, rules })
 }

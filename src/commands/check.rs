@@ -41,7 +41,19 @@ pub fn execute(
                 print_report(&config.settings, report);
             }
         } else if !list {
-            eprintln!("{}", result.format_err());
+            if config.settings.color {
+                eprintln!(
+                    "{} {}",
+                    result.path().to_string_lossy().red(),
+                    result.format_err()
+                );
+            } else {
+                eprintln!(
+                    "{}: {}",
+                    result.path().to_string_lossy(),
+                    result.format_err()
+                );
+            }
         }
     }
 

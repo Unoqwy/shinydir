@@ -56,11 +56,16 @@ allowed-dirs = [] # empty 'allowed-dirs' mean no directory is valid
 #----------------------------#
 
 [automove]
+script-warning = true # display a warning message if some automove rules are using scripts
+                      # as they can slow down the program quite a bit with thousands of matched files
 report-info = "count" # display how many files could be
                       # automatically moved at the end of a report
                       # options are: "no", "any", "count"
 
 [[automove.rules]]
+name = "Home-Videos" # give a name to the rule otherwise it will dispaly the path of `parent`
+                     # since several rules can have the same parent, it's recommended
+                     # to give a name to every rule
 parent = "$HOME"
 match = [
     { ext = "mp4" },
@@ -70,6 +75,18 @@ match = [
 to = "$HOME/Videos"
 
 [[automove.rules]]
+name = "Home-Music"
+parent = "$HOME"
+match = [
+    { ext = "mp3" },
+    { ext = "m4a" },
+    { ext = "opus" },
+    { ext = "flac" },
+]
+to = "$HOME/Music"
+
+[[automove.rules]]
+name = "Screenshots"
 parent = "$HOME/Pictures/Screenshots"
 match = [
     { ext = "png" },

@@ -236,14 +236,22 @@ fn resolve_metadata(dir_entry: &DirEntry) -> anyhow::Result<Metadata> {
 }
 
 impl CheckerResult {
+    pub fn path(&self) -> &Path {
+        match self {
+            CheckerResult::Ok(report) => &report.path,
+            CheckerResult::MissingDirectory { path } => path,
+            CheckerResult::NotADirectory { path } => path,
+        }
+    }
+
     pub fn format_err(&self) -> String {
         match self {
             CheckerResult::Ok(_) => format!("Ok"),
-            CheckerResult::MissingDirectory { path } => {
-                format!("Directory {} does not exist", path.to_string_lossy())
+            CheckerResult::MissingDirectory { .. } => {
+                format!("Directory does not exist!")
             }
-            CheckerResult::NotADirectory { path } => {
-                format!("File {} is not a directory", path.to_string_lossy())
+            CheckerResult::NotADirectory { .. } => {
+                format!("File is not a directory!")
             }
         }
     }
