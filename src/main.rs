@@ -155,7 +155,7 @@ where
             .collect::<Vec<_>>();
         let count = tmp.len();
         tmp.sort();
-        (tmp.join(&format!("{} ", ",".white().dimmed())), count)
+        (tmp.join(&format!("{} ", ",".bright_black())), count)
     } else {
         let mut tmp = it.collect::<Vec<_>>();
         let count = tmp.len();
