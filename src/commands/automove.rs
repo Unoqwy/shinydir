@@ -128,35 +128,33 @@ fn print_entries(
     let errors = entries.iter().filter(|entry| entry.is_err()).count();
 
     let dot = if settings.unicode { "\u{f444}" } else { "-" };
+    let mut info = Vec::new();
+    if valid_entries > 0 {
+        let msg = format!("{} files moved", valid_entries);
+        if settings.color {
+            info.push(format!("{}", msg.bright_yellow()));
+        } else {
+            info.push(msg);
+        }
+    }
+    if errors > 0 {
+        let msg = format!("{} errors", errors);
+        if settings.color {
+            info.push(format!("{}", msg.bright_red()));
+        } else {
+            info.push(msg);
+        }
+    }
+    let info_sep = if settings.color { " " } else { ", " };
     if settings.color {
-        let mut info = Vec::new();
-        if valid_entries > 0 {
-            let msg = format!("{} files moved", valid_entries);
-            if settings.color {
-                info.push(format!("{}", msg.bright_yellow()));
-            } else {
-                info.push(msg);
-            }
-        }
-        if errors > 0 {
-            let msg = format!("{} errors", errors);
-            if settings.color {
-                info.push(format!("{}", msg.bright_red()));
-            } else {
-                info.push(msg);
-            }
-        }
-        let info_sep = if settings.color { " " } else { ", " };
         println!(
             "{} {} {}",
             display_name.blue(),
-            if settings.color {
-                dot.white().dimmed()
-            } else {
-                dot.into()
-            },
+            dot.white().dimmed(),
             info.join(info_sep)
         );
+    } else {
+        println!("{} {} {}", display_name, dot, info.join(info_sep));
     }
 
     let moved_to_dirs_no_dedup = entries
@@ -188,7 +186,7 @@ fn print_entries(
         })
         .map(|(path, count)| (path.strip_prefix(&rule.directory).unwrap_or(path), count));
     if settings.color {
-        let mut tmp = rel_dirs_it
+        let tmp = rel_dirs_it
             .map(|(path, count)| {
                 format!(
                     "{} {}",
@@ -197,7 +195,6 @@ fn print_entries(
                 )
             })
             .collect::<Vec<_>>();
-        tmp.sort();
         println!(
             "{} {} {}",
             arrow.black(),
@@ -205,7 +202,10 @@ fn print_entries(
             tmp.join(&format!("{}", ", ".bright_black()))
         );
     } else {
-        println!("{} Moved To: ", arrow)
+        let tmp = rel_dirs_it
+            .map(|(path, count)| format!("{} {}", path.to_string_lossy(), count))
+            .collect::<Vec<_>>();
+        println!("{} Moved To: {}", arrow, tmp.join(", "))
     }
 
     for err in entries.iter().flat_map(|entry| entry.as_ref().err()) {
