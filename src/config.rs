@@ -19,6 +19,8 @@ pub struct Config {
 #[serde(default, rename_all = "kebab-case")]
 pub struct Settings {
     pub color: bool,
+    #[serde(rename = "use-unicode")]
+    pub unicode: bool,
 }
 
 /// Configuration for a directory

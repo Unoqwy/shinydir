@@ -29,7 +29,7 @@ pub enum Commands {
         target: Option<PathBuf>,
 
         /// Print files that would be affected without actually moving them
-        #[arg(long, action = clap::ArgAction::SetTrue)]
+        #[arg(id = "dry", long, action = clap::ArgAction::SetTrue)]
         dry_run: bool,
     },
 }

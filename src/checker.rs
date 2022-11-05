@@ -1,4 +1,4 @@
-use std::fs::{self, DirEntry};
+use std::fs::{self, DirEntry, Metadata};
 use std::path::{Path, PathBuf};
 
 use regex::RegexSet;
@@ -53,7 +53,7 @@ pub struct Report {
 /// The type of issue of a report
 #[derive(Debug, Clone)]
 pub enum ReportIssue {
-    UnexpectedFile { path: PathBuf },
+    UnexpectedFile { path: PathBuf, metadata: Metadata },
 }
 
 impl Checker {
@@ -125,6 +125,7 @@ impl DirectoryChecker {
 
 impl FileRule {
     pub fn test_from_dir_entry(&self, dir_entry: &DirEntry) -> anyhow::Result<Option<ReportIssue>> {
+        let mut metadata = None;
         let res = match self {
             Self::MergeAnd(merge) => {
                 for rule in merge {
@@ -147,15 +148,10 @@ impl FileRule {
             }
 
             Self::Type(file_type) => {
-                let symlink = dir_entry.file_type()?.is_symlink();
-                let metadata = if symlink {
-                    fs::metadata(dir_entry.path())?
-                } else {
-                    dir_entry.metadata()?
-                };
+                metadata = Some(resolve_metadata(dir_entry)?);
                 match file_type {
-                    FileType::Directory => metadata.is_dir(),
-                    FileType::File => metadata.is_file(),
+                    FileType::Directory => metadata.as_ref().unwrap().is_dir(),
+                    FileType::File => metadata.as_ref().unwrap().is_file(),
                 }
             }
             Self::Name(pattern) => pattern.is_match(dir_entry.file_name().to_str().unwrap()),
@@ -164,10 +160,24 @@ impl FileRule {
         if res {
             Ok(None)
         } else {
+            if metadata.is_none() {
+                metadata = Some(resolve_metadata(dir_entry)?);
+            }
             Ok(Some(ReportIssue::UnexpectedFile {
                 path: dir_entry.path(),
+                metadata: metadata.unwrap(),
             }))
         }
+    }
+}
+
+/// Returns a dir entry's file metadata after following symlinks
+fn resolve_metadata(dir_entry: &DirEntry) -> anyhow::Result<Metadata> {
+    let symlink = dir_entry.file_type()?.is_symlink();
+    if symlink {
+        Ok(fs::metadata(dir_entry.path())?)
+    } else {
+        Ok(dir_entry.metadata()?)
     }
 }
 
@@ -188,7 +198,13 @@ impl CheckerResult {
 impl ReportIssue {
     pub fn path(&self) -> &Path {
         match self {
-            ReportIssue::UnexpectedFile { path } => &path,
+            ReportIssue::UnexpectedFile { path, .. } => &path,
+        }
+    }
+
+    pub fn file_metadata(&self) -> &Metadata {
+        match self {
+            ReportIssue::UnexpectedFile { metadata, .. } => &metadata,
         }
     }
 }
@@ -222,6 +238,7 @@ pub fn from_config(config: &Config, parent: Option<PathBuf>) -> Result<Checker, 
         });
     }
 
+    directories.sort_by_cached_key(|dir| dir.path.to_path_buf());
     Ok(Checker {
         parent,
         directories,

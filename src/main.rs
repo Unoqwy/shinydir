@@ -1,11 +1,13 @@
+use std::borrow::Borrow;
 use std::fs;
 use std::path::PathBuf;
 
 use clap::Parser;
 
-use checker::{CheckerResult, Report};
+use checker::{CheckerResult, Report, ReportIssue};
 use cli::{Commands, CLI};
-use config::Config;
+use colored::Colorize;
+use config::{Config, Settings};
 
 mod automove;
 mod checker;
@@ -59,7 +61,7 @@ fn command_check(config: &Config, target: Option<PathBuf>, list: bool) -> anyhow
                 }
                 println!("{}", abs_files.join("\n"));
             } else {
-                print_report(report);
+                print_report(&config.settings, report);
             }
         } else {
             eprintln!("{}", result.format_err());
@@ -75,22 +77,86 @@ fn command_automove(config: &Config, target: Option<PathBuf>, dry_run: bool) -> 
     Ok(())
 }
 
-fn print_report(report: Report) {
+fn print_report(settings: &Settings, report: Report) {
     if report.issues.is_empty() {
-        println!("Directory {} is all good!", report.path.to_string_lossy());
+        let checkmark = if settings.unicode { "\u{f00c}" } else { "OK" };
+        if settings.color {
+            println!(
+                "{} {}",
+                report.path.to_string_lossy().blue(),
+                checkmark.green().bold()
+            )
+        } else {
+            println!("{} {}", report.path.to_string_lossy(), checkmark);
+        }
         return;
     }
 
-    let rel_files = report
+    let xmark = if settings.unicode { "\u{f467}" } else { "X" };
+    let total_files = report.issues.iter().count();
+    let misplaced_files_str = format!("{} misplaced files", total_files);
+    if settings.color {
+        println!(
+            "{} {} {}",
+            report.path.to_string_lossy().blue(),
+            xmark.red().bold(),
+            misplaced_files_str.bright_yellow()
+        );
+    } else {
+        println!(
+            "{} {} {}",
+            report.path.to_string_lossy(),
+            xmark,
+            misplaced_files_str
+        );
+    }
+
+    let (directories_str, directories_count) =
+        joined_rel_files(settings, &report, |issue| issue.file_metadata().is_dir());
+    let (files_str, files_count) =
+        joined_rel_files(settings, &report, |issue| issue.file_metadata().is_file());
+    if settings.color {
+        println!(
+            "{} {}{} {}",
+            "Directories".bright_white().bold(),
+            format!("({})", directories_count).bright_yellow().bold(),
+            ":".bright_white().bold(),
+            directories_str
+        );
+        println!(
+            "{} {}{} {}",
+            "Files".bright_white().bold(),
+            format!("({})", files_count).bright_yellow().bold(),
+            ":".bright_white().bold(),
+            files_str
+        );
+    } else {
+        println!("Directories ({}): {}", directories_count, directories_str);
+        println!("Files ({}): {}", files_count, files_str);
+    }
+}
+
+fn joined_rel_files<P>(settings: &Settings, report: &Report, predicate: P) -> (String, usize)
+where
+    P: FnMut(&&ReportIssue) -> bool,
+{
+    let it = report
         .issues
         .iter()
+        .filter(predicate)
         .flat_map(|issue| issue.path().strip_prefix(&report.path).ok())
-        .map(|path| path.to_string_lossy())
-        .collect::<Vec<_>>()
-        .join(", ");
-    println!(
-        "Unexpected Files ({}): {}",
-        report.path.to_string_lossy(),
-        rel_files
-    );
+        .map(|path| path.to_string_lossy());
+    if settings.color {
+        let mut tmp = it
+            .map(|path| format!("{}", path.white()))
+            .collect::<Vec<_>>();
+        let count = tmp.len();
+        tmp.sort();
+        (tmp.join(&format!("{} ", ",".white().dimmed())), count)
+    } else {
+        let mut tmp = it.collect::<Vec<_>>();
+        let count = tmp.len();
+        tmp.sort();
+        (tmp.join(", "), count)
+    }
 }

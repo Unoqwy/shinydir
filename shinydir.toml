@@ -4,6 +4,7 @@
 
 [settings]
 color = true # color terminal output
+use-unicode = true # use fancy symbols in terminal output. If false defaults to ascii text
 
 #----------------------------#
 #         Directories        #
