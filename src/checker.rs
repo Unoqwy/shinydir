@@ -166,13 +166,6 @@ impl FileRule {
 }
 
 impl CheckerResult {
-    pub fn is_err(&self) -> bool {
-        match self {
-            CheckerResult::Ok(_) => false,
-            _ => true,
-        }
-    }
-
     pub fn format_err(&self) -> String {
         match self {
             CheckerResult::Ok(_) => format!("Ok"),

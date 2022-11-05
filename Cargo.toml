@@ -9,6 +9,7 @@ toml = "0.5"
 regex = "1.6"
 anyhow = "1.0"
 shellexpand = "2.1"
+clap = { version = "4.0", features = ["derive"] }
 
 [[bin]]
 path = "src/main.rs"
