@@ -11,11 +11,20 @@ pub fn execute(
     config_dir: PathBuf,
     target: Option<PathBuf>,
     list: bool,
-    dry_run: bool,
+    mut dry_run: bool,
 ) -> anyhow::Result<()> {
     // Setup automove
     let parent = target.map(fs::canonicalize).transpose()?;
     let automove = crate::automove::from_config(config, config_dir, parent)?;
+
+    if automove.rules.is_empty() {
+        if config.settings.color {
+            eprintln!("{} No auto-move rules were configured.", "(!)".bold());
+        } else {
+            eprintln!("(!) No auto-move rules were configured.");
+        }
+        return Ok(());
+    }
 
     // Warn user about slow execution time
     let script_warning = config.automove.script_warning
@@ -35,7 +44,19 @@ pub fn execute(
     }
 
     // Warn user about dry run
-    if dry_run {
+    if config.automove.force_dry_run {
+        dry_run = true;
+        if config.settings.color {
+            eprintln!(
+                "{} Dry run is enabled for newly copied configs as a security measure. Turn off {} in the config file to disable this security. {}",
+                "Info!".bright_yellow().bold(),
+                "force-dry-run".dimmed(),
+                "Until then, no file will actually be moved!".bold(),
+            );
+        } else {
+            eprintln!("INFO! Dry run is enabled for newly copied configs as a security measure. Turn off 'force-dry-run' in the config file to disable this security. Until then, no file will actually be moved!");
+        }
+    } else if dry_run {
         if config.settings.color {
             eprintln!(
                 "{} Auto-move running in {}, no files will actually be moved.",
@@ -43,7 +64,7 @@ pub fn execute(
                 "dry mode".white().bold()
             );
         } else {
-            eprintln!("Info! Auto-move running in dry mode, no files will actually be moved.");
+            eprintln!("INFO! Auto-move running in dry mode, no files will actually be moved.");
         }
     }
 
@@ -150,6 +171,14 @@ pub fn execute(
             }
             _ => {}
         };
+    }
+
+    if config.automove.force_dry_run {
+        if config.settings.color {
+            eprintln!("\n\n{}", "No files were actually moved as you are a new user. Please refer to the \"Info!\" note at the beginning of this output.".italic());
+        } else {
+            eprintln!("\n\nNo files were actually moved as you are a new user. Please refer to the \"Info!\" note at the beginning of this output.");
+        }
     }
 
     Ok(())

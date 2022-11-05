@@ -15,11 +15,12 @@ pub struct Config {
 }
 
 /// General application settings
-#[derive(Clone, Debug, Default, Deserialize)]
-#[serde(default, rename_all = "kebab-case")]
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct Settings {
+    #[serde(default = "default_true")]
     pub color: bool,
-    #[serde(rename = "use-unicode")]
+    #[serde(rename = "use-unicode", default = "default_true")]
     pub unicode: bool,
 }
 
@@ -48,10 +49,16 @@ pub enum MatchRule {
 #[serde(rename_all = "kebab-case")]
 pub struct AutoMoveConfig {
     /// Whether to show "scripts may slow down the execution" warning
+    #[serde(default)]
     pub script_warning: bool,
 
     /// Level of auto-move report info
+    #[serde(default)]
     pub report_info: AutoMoveReportInfo,
+
+    /// Security for new users
+    #[serde(default)]
+    pub force_dry_run: bool,
 
     #[serde(default)]
     pub rules: Vec<AutoMoveRule>,
@@ -85,6 +92,16 @@ pub struct AutoMoveRule {
     pub to: String,
     /// Path to a script that gives the output filename
     pub to_script: Option<String>,
+}
+
+impl Default for AutoMoveReportInfo {
+    fn default() -> Self {
+        Self::Count
+    }
+}
+
+fn default_true() -> bool {
+    true
 }
 
 /// Compiles a list of (filename) match rules into a [`RegexSet`] for fast checks

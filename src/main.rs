@@ -1,4 +1,5 @@
-use std::fs;
+use std::fs::{self, File};
+use std::io::Write;
 use std::path::PathBuf;
 
 use clap::Parser;
@@ -20,7 +21,16 @@ fn main() -> anyhow::Result<()> {
         Some(path) => path,
         None => {
             let xdg_dirs = xdg::BaseDirectories::with_prefix("shinydir")?;
-            xdg_dirs.get_config_file("shinydir.toml")
+            let file_path = xdg_dirs.get_config_file("shinydir.toml");
+            if !file_path.try_exists().unwrap_or(true) {
+                eprintln!("Creating default configuration because it doesn't exist..");
+                let mut file = File::create(&file_path)?;
+                let default_config = include_str!("../shinydir.toml").as_bytes();
+                file.write_all(default_config)?;
+                file.flush()?;
+                eprintln!("");
+            }
+            file_path
         }
     };
     let config_contents = fs::read_to_string(&config_path)
