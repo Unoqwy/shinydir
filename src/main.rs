@@ -119,23 +119,31 @@ fn print_report(settings: &Settings, report: Report) {
     let (files_str, files_count) =
         joined_rel_files(settings, &report, |issue| issue.file_metadata().is_file());
     if settings.color {
-        println!(
-            "{} {}{} {}",
-            "Directories".bright_white().bold(),
-            format!("({})", directories_count).bright_yellow().bold(),
-            ":".bright_white().bold(),
-            directories_str
-        );
-        println!(
-            "{} {}{} {}",
-            "Files".bright_white().bold(),
-            format!("({})", files_count).bright_yellow().bold(),
-            ":".bright_white().bold(),
-            files_str
-        );
+        if directories_count > 0 {
+            println!(
+                "{} {}{} {}",
+                "Directories".bright_white().bold(),
+                format!("({})", directories_count).bright_yellow().bold(),
+                ":".bright_white().bold(),
+                directories_str
+            );
+        }
+        if files_count > 0 {
+            println!(
+                "{} {}{} {}",
+                "Files".bright_white().bold(),
+                format!("({})", files_count).bright_yellow().bold(),
+                ":".bright_white().bold(),
+                files_str
+            );
+        }
     } else {
-        println!("Directories ({}): {}", directories_count, directories_str);
-        println!("Files ({}): {}", files_count, files_str);
+        if directories_count > 0 {
+            println!("Directories ({}): {}", directories_count, directories_str);
+        }
+        if files_count > 0 {
+            println!("Files ({}): {}", files_count, files_str);
+        }
     }
 }
 
