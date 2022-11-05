@@ -47,6 +47,10 @@ pub enum MatchRule {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct AutoMoveConfig {
+    /// Whether to show "scripts may slow down the execution" warning
+    pub script_warning: bool,
+
+    /// Level of auto-move report info
     pub report_info: AutoMoveReportInfo,
 
     #[serde(default)]

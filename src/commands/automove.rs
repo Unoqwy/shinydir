@@ -18,13 +18,14 @@ pub fn execute(
     let automove = crate::automove::from_config(config, config_dir, parent)?;
 
     // Warn user about slow execution time
-    let has_script = automove
-        .rules
-        .iter()
-        .flat_map(|rule| &rule.to_script)
-        .count()
-        > 0;
-    if has_script {
+    let script_warning = config.automove.script_warning
+        && automove
+            .rules
+            .iter()
+            .flat_map(|rule| &rule.to_script)
+            .count()
+            > 0;
+    if script_warning {
         // print on stderr to not affect pipe input (e.g. when using --list)
         if config.settings.color {
             eprintln!("{} Your auto-move rules are configured to call scripts {}. If execution time gets too long, {}.", "Heads up!".bright_red().bold(), "(to_script)".white().dimmed(), "scripts are the cause".bold());
@@ -50,7 +51,7 @@ pub fn execute(
     let mut results = automove.run();
 
     // Print space after info message
-    if (has_script || dry_run) && !list {
+    if (script_warning || dry_run) && !list {
         eprintln!("");
     }
 
