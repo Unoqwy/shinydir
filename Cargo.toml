@@ -2,6 +2,11 @@
 name = "shinydir"
 version = "0.1.0"
 edition = "2021"
+description = "CLI tool to enforce clean directories by setting rules"
+repository = "https://github.com/Unoqwy/shinydir"
+license = "MIT"
+keywords = ["organization", "classifier", "directories", "files"]
+categories = ["command-line-utilities"]
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
