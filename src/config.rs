@@ -30,8 +30,8 @@ pub struct DirectoryConfig {
     pub recursive: bool,
     pub recursive_ignore_children: Vec<MatchRule>,
 
-    pub allowed_dirs: Vec<MatchRule>,
-    pub allowed_files: Vec<MatchRule>,
+    pub allowed_dirs: Option<Vec<MatchRule>>,
+    pub allowed_files: Option<Vec<MatchRule>>,
 }
 
 /// A rule to check if the filename matches

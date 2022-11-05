@@ -47,12 +47,8 @@ allowed-files = [
     { ext = "flac" },
 ]
 
-# [dir."$HOME/Downloads"]
-# allowed-dirs = [
-#     "Videos",
-#     "Music",
-#     "Misc",
-# ]
+[dir."$HOME/Downloads"]
+allowed-dirs = [] # empty 'allowed-dirs' mean no directory is valid
 # no 'allow-files' means any file is valid
 
 #----------------------------#

@@ -22,6 +22,8 @@ pub struct DirectoryChecker {
 #[derive(Debug, Clone)]
 pub enum FileRule {
     Any,
+    None,
+
     MergeAnd(Vec<FileRule>),
     MergeOr(Vec<FileRule>),
 
@@ -137,9 +139,8 @@ impl FileRule {
     pub fn test_from_dir_entry(&self, dir_entry: &DirEntry) -> anyhow::Result<Option<ReportIssue>> {
         let mut metadata = None;
         let res = match self {
-            Self::Any => {
-                return Ok(None);
-            }
+            Self::Any => true,
+            Self::None => false,
             Self::MergeAnd(merge) => {
                 for rule in merge {
                     if let Some(issue) = rule.test_from_dir_entry(dir_entry)? {
@@ -236,16 +237,24 @@ pub fn from_config(config: &Config, parent: Option<PathBuf>) -> Result<Checker, 
         let path = PathBuf::from(raw_path.as_ref());
 
         let mut rules_dir = vec![FileRule::Type(FileType::Directory)];
-        if !dir_config.allowed_dirs.is_empty() {
-            let compiled = crate::config::compile_match_rules(&dir_config.allowed_dirs)?;
-            rules_dir.push(FileRule::Name(compiled));
-        }
+        match &dir_config.allowed_dirs {
+            None => {}
+            Some(allowed) if allowed.is_empty() => rules_dir.push(FileRule::None),
+            Some(allowed) => {
+                let compiled = crate::config::compile_match_rules(allowed)?;
+                rules_dir.push(FileRule::Name(compiled));
+            }
+        };
 
         let mut rules_file = vec![FileRule::Type(FileType::File)];
-        if !dir_config.allowed_files.is_empty() {
-            let compiled = crate::config::compile_match_rules(&dir_config.allowed_files)?;
-            rules_file.push(FileRule::Name(compiled));
-        }
+        match &dir_config.allowed_files {
+            None => {}
+            Some(allowed) if allowed.is_empty() => rules_file.push(FileRule::None),
+            Some(allowed) => {
+                let compiled = crate::config::compile_match_rules(allowed)?;
+                rules_file.push(FileRule::Name(compiled));
+            }
+        };
 
         // recursive ignore only applies on directories anyway, no need to ignore FileType::File here
         let mut recursive_ignore_children = FileRule::Any;
