@@ -47,14 +47,65 @@ pub fn execute(
     }
 
     // Get entries to move
-    let results = automove.run();
+    let mut results = automove.run();
 
     // Print space after info message
     if (has_script || dry_run) && !list {
         eprintln!("");
     }
 
-    // Move
+    // Move files
+    for result in results.iter_mut() {
+        if let AutoMoveResult::Ok { entries, .. } = result {
+            for entry_res in entries.iter_mut() {
+                if entry_res.is_err() {
+                    continue;
+                }
+                let entry = entry_res.as_ref().unwrap();
+                if !dry_run {
+                    if let Some(parent) = entry.move_to.parent() {
+                        if let Err(err) = fs::create_dir_all(parent).map_err(|err| {
+                            anyhow::format_err!(
+                                "Couldn't create directory {}: {}",
+                                parent.to_string_lossy(),
+                                err
+                            )
+                        }) {
+                            *entry_res = Err(err);
+                            continue;
+                        }
+                    }
+                }
+                let new_err = match entry.move_to.try_exists() {
+                    Ok(true) => Some(anyhow::format_err!(
+                        "Moving to {} would overwrite a file",
+                        entry.move_to.to_string_lossy()
+                    )),
+                    Ok(false) if !dry_run => fs::rename(&entry.file, &entry.move_to)
+                        .map_err(|err| {
+                            anyhow::format_err!(
+                                "Couldn't move {} to {}: {}",
+                                entry.file.to_string_lossy(),
+                                entry.move_to.to_string_lossy(),
+                                err
+                            )
+                        })
+                        .err(),
+                    Ok(false) => None,
+                    Err(err) => Some(anyhow::format_err!(
+                        "Cannot check overwrite status for {}: {}",
+                        entry.move_to.to_string_lossy(),
+                        err
+                    )),
+                };
+                if let Some(err) = new_err {
+                    *entry_res = Err(err);
+                }
+            }
+        }
+    }
+
+    // Display output
     let mut first_it = true;
     for result in results {
         if first_it {
