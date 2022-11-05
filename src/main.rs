@@ -1,4 +1,3 @@
-use std::borrow::Borrow;
 use std::fs;
 use std::path::PathBuf;
 
@@ -20,9 +19,13 @@ fn main() -> anyhow::Result<()> {
     // Read config
     let config_path = match cli.config {
         Some(path) => path,
-        None => "shinydir.toml".into(),
+        None => {
+            let xdg_dirs = xdg::BaseDirectories::with_prefix("shinydir")?;
+            xdg_dirs.get_config_file("shinydir.toml")
+        }
     };
-    let config_contents = fs::read_to_string(config_path)?;
+    let config_contents = fs::read_to_string(config_path)
+        .map_err(|err| anyhow::format_err!("Could not read config file: {}", err))?;
     let config: Config = toml::from_str(&config_contents)?;
 
     // Run command
