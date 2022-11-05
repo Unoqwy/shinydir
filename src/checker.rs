@@ -61,6 +61,12 @@ impl Checker {
         let mut results = Vec::new();
 
         for directory in self.directories.iter() {
+            if let Some(parent) = &self.parent {
+                if !directory.path.starts_with(parent) {
+                    continue;
+                }
+            }
+
             let result = directory.check();
             results.push(result);
         }
