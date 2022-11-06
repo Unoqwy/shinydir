@@ -1,0 +1,63 @@
+[settings]
+color = true
+use-unicode = true
+
+[dir."$HOME"]
+allowed-dirs = [
+    { name = "Downloads" },
+    { name = "Pictures" },
+    { name = "Desktop" },
+    { name = "Videos" },
+    { name = "Music" },
+    { name = "Documents" },
+]
+
+[dir."$HOME/Downloads"]
+allowed-dirs = []
+allowed-files = []
+
+[dir."$HOME/Videos"]
+allowed-files = [
+    { ext = "mp4" },
+]
+
+[dir."$HOME/Music"]
+allowed-files = [
+    { ext = "mp3" },
+]
+
+[automove]
+script-warning = false
+force-dry-run = false
+
+[[automove.rules]]
+name = "Inverted Music-Videos"
+parent = "$HOME/Music"
+match = [
+    { ext = "mp4" },
+]
+to = "$HOME/Videos"
+
+[[automove.rules]]
+name = "Inverted Videos-Music"
+parent = "$HOME/Videos"
+match = [
+    { ext = "mp3" },
+]
+to = "$HOME/Music"
+
+[[automove.rules]]
+name = "Downloaded Movies"
+parent = "$HOME/Downloads"
+match = [
+    { ext = "mp4" },
+]
+to = "$HOME/Videos"
+
+[[automove.rules]]
+name = "Downloaded Songs"
+parent = "$HOME/Downloads"
+match = [
+    { ext = "mp3" },
+]
+to = "$HOME/Music"

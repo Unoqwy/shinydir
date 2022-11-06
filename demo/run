@@ -1,0 +1,24 @@
+#!/bin/bash
+set -e
+
+export HOME="/home/demo"
+if [[ -d $HOME ]]; then
+    echo "Make sure $HOME does not exist"
+    exit 1
+fi
+
+rm -rf "$PWD/tmp"
+mkdir -p "$PWD/tmp"
+sudo ln -s "$PWD/tmp" /home/demo
+
+mkdir -p "$HOME/Music"
+
+mkdir -p "$HOME/Videos/Album-02"
+touch "$HOME/Videos/A nice song.mp3"
+
+mkdir -p "$HOME/Downloads/extracted-archive"
+touch "$HOME/Downloads/Movie.mp4"
+touch "$HOME/Downloads/Song.mp3"
+
+export SHINYDIR_CONFIG_FILE="demo_config.toml"
+vhs < demo.tape

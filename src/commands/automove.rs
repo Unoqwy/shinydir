@@ -279,7 +279,7 @@ fn print_entries(
         println!(
             "{} {} {}",
             arrow.black(),
-            "Moved To".bold(),
+            "Moved To".white().bold(),
             tmp.join(&format!("{}", ", ".bright_black()))
         );
     } else {

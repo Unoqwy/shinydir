@@ -2,6 +2,8 @@
 
 Stop letting yourself throw junk files everywhere, set rules and let a tool yell at you.
 
+![Demo GIF](./demo/demo.gif)
+
 shinydir is a CLI tool that checks if directories are filled with allowed files or sub-directories according to set rules and report any outliar. It can also automatically move misplaced files according to configured rules.
 
 ## Installation
@@ -23,7 +25,7 @@ Make sure you have a recent version of the rust toolchain installed.
 
 ## Usage
 
-The configuration file is located at `$XDG_CONFIG_HOME/shinydir/shinydir.toml` (i.e. `/home/user/.config/shinydir/shinydir.toml`).  
+The configuration file is located at `$XDG_CONFIG_HOME/shinydir/shinydir.toml` (i.e. `/home/user/.config/shinydir/shinydir.toml`). You may permanently change the configuration file path by setting the `SHINYDIR_CONFIG_FILE` environment variable.  
 The defaults are copied on first run if the file doesn't exist. You can check out the default configuration [here](./shinydir.toml).
 
 The power of shinydir comes from your own configuration, make sure to tailor the config file to your liking before proceeding.

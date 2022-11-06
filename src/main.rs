@@ -1,3 +1,4 @@
+use std::env;
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::PathBuf;
@@ -14,10 +15,14 @@ mod commands;
 mod config;
 
 fn main() -> anyhow::Result<()> {
-    let cli = CLI::parse();
+    let cli: CLI = CLI::parse();
 
     // Read config
-    let config_path = match cli.config {
+    let config_path = match &cli.config {
+        Some(path) => Some(path.clone()),
+        _ => env::var("SHINYDIR_CONFIG_FILE").ok().map(PathBuf::from),
+    };
+    let config_path = match config_path {
         Some(path) => path,
         None => {
             let xdg_dirs = xdg::BaseDirectories::with_prefix("shinydir")?;
