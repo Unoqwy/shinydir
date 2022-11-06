@@ -6,8 +6,8 @@ use std::process::Command;
 
 use anyhow::format_err;
 
-use crate::checker::FileRule;
 use crate::config::Config;
+use crate::rules::{self, FileMatchRule};
 
 #[derive(Debug, Clone)]
 pub struct AutoMove {
@@ -15,15 +15,24 @@ pub struct AutoMove {
     pub rules: Vec<AutoMoveRule>,
 }
 
+/// A rule to move files
 #[derive(Debug, Clone)]
 pub struct AutoMoveRule {
+    /// Custom display name of the rule
     pub custom_name: Option<String>,
+    /// Directory in which files will be checked
     pub directory: PathBuf,
+    /// Matching rules to determine which files need to be moved
+    pub match_rules: FileMatchRule,
+    /// Target directory in which files will be put
     pub to: PathBuf,
+    /// Custom script path to give a new filename to files.
+    ///
+    /// It can also return the new absolute path.
     pub to_script: Option<PathBuf>,
-    pub match_rules: FileRule,
 }
 
+/// Result from attempting to execute a rule
 #[derive(Debug)]
 pub enum AutoMoveResult<'a> {
     DirDoesNotExist {
@@ -35,15 +44,22 @@ pub enum AutoMoveResult<'a> {
     },
 }
 
+/// Instruction to move a file from a path to new one
 #[derive(Debug, Clone)]
 pub struct AutoMoveResultEntry {
+    /// Current file path
     pub file: PathBuf,
+    /// Current file metadata
     pub file_metadata: Metadata,
-
+    /// New file path to be moved to
     pub move_to: PathBuf,
 }
 
 impl AutoMove {
+    /// Executes rules to get a list of entries to move.
+    ///
+    /// This doesn't actually move the files but each entry contains the
+    /// current file path and the new wanted file path.
     pub fn run(&self) -> Vec<AutoMoveResult> {
         let mut results = Vec::new();
         for rule in self.rules.iter() {
@@ -57,6 +73,7 @@ impl AutoMove {
         results
     }
 
+    /// Checks if any file would be moved if this were to be run
     pub fn would_move_any(&self) -> bool {
         for rule in self.rules.iter() {
             if rule.would_move() {
@@ -65,9 +82,15 @@ impl AutoMove {
         }
         false
     }
+
+    /// Counts how many files would be moved across rules if this were to be run
+    pub fn count_move(&self) -> usize {
+        self.rules.iter().fold(0, |a, b| a + b.count_move())
+    }
 }
 
 impl AutoMoveRule {
+    /// Returns the display name of the rule (could be a custom name or path str representation)
     pub fn display_name(&self) -> String {
         self.custom_name
             .clone()
@@ -85,6 +108,7 @@ impl AutoMoveRule {
         result >= 1
     }
 
+    /// Counts how many files would be moved without getting a full list of entries
     pub fn count_move(&self) -> usize {
         self.count_matches_on_path(&self.directory, false)
     }
@@ -190,6 +214,7 @@ impl AutoMoveRule {
     }
 }
 
+/// Sets up a [`AutoMove`] from config
 pub fn from_config(
     config: &Config,
     config_dir: PathBuf,
@@ -197,12 +222,7 @@ pub fn from_config(
 ) -> anyhow::Result<AutoMove> {
     let mut rules = Vec::new();
     for config_rule in config.automove.rules.iter() {
-        let mut match_rules = FileRule::Any;
-        if !config_rule.match_rules.is_empty() {
-            let compiled = crate::config::compile_match_rules(&config_rule.match_rules)?;
-            match_rules = FileRule::Name(compiled);
-        }
-
+        let match_rules = rules::compile_config_rules(&config_rule.match_rules)?;
         rules.push(AutoMoveRule {
             custom_name: config_rule.name.clone(),
             directory: PathBuf::from(shellexpand::env(&config_rule.parent)?.as_ref()),

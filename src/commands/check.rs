@@ -72,7 +72,7 @@ pub fn execute(
             }
         }
         AutoMoveReportInfo::Count => {
-            let count = automove.rules.iter().fold(0, |a, b| a + b.count_move());
+            let count = automove.count_move();
             if count > 0 {
                 if config.settings.color {
                     println!(

@@ -1,9 +1,8 @@
 use std::fs::{self, DirEntry, Metadata};
 use std::path::{Path, PathBuf};
 
-use regex::RegexSet;
-
 use crate::config::Config;
+use crate::rules::{self, FileMatchRule, FileType};
 
 #[derive(Debug, Clone)]
 pub struct Checker {
@@ -11,36 +10,23 @@ pub struct Checker {
     pub directories: Vec<DirectoryChecker>,
 }
 
+/// Checker configuration for a directory
 #[derive(Debug, Clone)]
 pub struct DirectoryChecker {
+    /// Path of the directory
     pub path: PathBuf,
+    /// Valid file rules. Any file that doesn't match will be reported as misplaced
+    pub rules: FileMatchRule,
+    /// Whether to check rules recursively
     pub recursive: bool,
-    pub recursive_ignore_rules: FileRule,
-    pub rules: FileRule,
+    /// Children directories to ignore when `recursive` is `true`
+    pub recursive_ignore_rules: FileMatchRule,
 }
 
-#[derive(Debug, Clone)]
-pub enum FileRule {
-    Any,
-    None,
-
-    MergeAnd(Vec<FileRule>),
-    MergeOr(Vec<FileRule>),
-
-    Type(FileType),
-    Name(RegexSet),
-}
-
-#[derive(Debug, Clone)]
-pub enum FileType {
-    File,
-    Directory,
-}
-
+/// Result from attempting to check a directory
 #[derive(Debug, Clone)]
 pub enum CheckerResult {
     Ok(Report),
-
     MissingDirectory { path: PathBuf },
     NotADirectory { path: PathBuf },
 }
@@ -57,25 +43,24 @@ pub struct Report {
 /// A misplaced file
 #[derive(Debug, Clone)]
 pub struct ReportIssue {
+    /// Path of the misplaced file
     path: PathBuf,
+    /// Current metadata of the file
     metadata: Metadata,
 }
 
 impl Checker {
+    /// Executes directory rules to get a list of misplaced files
     pub fn run(&self) -> Vec<CheckerResult> {
         let mut results = Vec::new();
-
         for directory in self.directories.iter() {
             if let Some(parent) = &self.parent {
                 if !directory.path.starts_with(parent) {
                     continue;
                 }
             }
-
-            let result = directory.check();
-            results.push(result);
+            results.push(directory.check());
         }
-
         results
     }
 }
@@ -136,102 +121,16 @@ impl DirectoryChecker {
     }
 }
 
-impl FileRule {
+impl FileMatchRule {
     pub fn test_from_dir_entry(&self, dir_entry: &DirEntry) -> anyhow::Result<Option<ReportIssue>> {
-        let mut metadata = None;
-        let res = match self {
-            Self::Any => true,
-            Self::None => false,
-            Self::MergeAnd(merge) => {
-                for rule in merge {
-                    if let Some(issue) = rule.test_from_dir_entry(dir_entry)? {
-                        return Ok(Some(issue));
-                    }
-                }
-                return Ok(None);
-            }
-            Self::MergeOr(merge) => {
-                if merge.is_empty() {
-                    return Ok(None);
-                }
-                let mut issue = None;
-                for rule in merge {
-                    // FIXME : This doesn't properly keep track of what issue to report to the user
-                    match rule.test_from_dir_entry(dir_entry)? {
-                        some @ Some(_) => issue = some,
-                        None => return Ok(None),
-                    }
-                }
-                return Ok(issue);
-            }
-
-            Self::Type(file_type) => {
-                metadata = Some(resolve_metadata(dir_entry)?);
-                match file_type {
-                    FileType::Directory => metadata.as_ref().unwrap().is_dir(),
-                    FileType::File => metadata.as_ref().unwrap().is_file(),
-                }
-            }
-            Self::Name(pattern) => pattern.is_match(dir_entry.file_name().to_str().unwrap()),
-        };
-
-        if res {
+        if self.matches_dir_entry(dir_entry)? {
             Ok(None)
         } else {
-            if metadata.is_none() {
-                metadata = Some(resolve_metadata(dir_entry)?);
-            }
             Ok(Some(ReportIssue {
                 path: dir_entry.path(),
-                metadata: metadata.unwrap(),
+                metadata: crate::rules::resolve_metadata(dir_entry)?,
             }))
         }
-    }
-
-    pub fn matches_dir_entry(&self, dir_entry: &DirEntry) -> anyhow::Result<bool> {
-        let res = match self {
-            Self::Any => true,
-            Self::None => false,
-            Self::MergeAnd(merge) => {
-                for rule in merge {
-                    if rule.matches_dir_entry(dir_entry)? {
-                        return Ok(true);
-                    }
-                }
-                false
-            }
-            Self::MergeOr(merge) => {
-                if merge.is_empty() {
-                    return Ok(true);
-                }
-                for rule in merge {
-                    if rule.matches_dir_entry(dir_entry)? {
-                        return Ok(true);
-                    }
-                }
-                return Ok(false);
-            }
-
-            Self::Type(file_type) => {
-                let metadata = Some(resolve_metadata(dir_entry)?);
-                match file_type {
-                    FileType::Directory => metadata.as_ref().unwrap().is_dir(),
-                    FileType::File => metadata.as_ref().unwrap().is_file(),
-                }
-            }
-            Self::Name(pattern) => pattern.is_match(dir_entry.file_name().to_str().unwrap()),
-        };
-        Ok(res)
-    }
-}
-
-/// Returns a dir entry's file metadata after following symlinks
-fn resolve_metadata(dir_entry: &DirEntry) -> anyhow::Result<Metadata> {
-    let symlink = dir_entry.file_type()?.is_symlink();
-    if symlink {
-        Ok(fs::metadata(dir_entry.path())?)
-    } else {
-        Ok(dir_entry.metadata()?)
     }
 }
 
@@ -267,43 +166,30 @@ impl ReportIssue {
     }
 }
 
+/// Sets up a [`Checker`] from config
 pub fn from_config(config: &Config, parent: Option<PathBuf>) -> anyhow::Result<Checker> {
     let mut directories = Vec::new();
     for (dir_path, dir_config) in config.directories.iter() {
         let raw_path = shellexpand::env(dir_path)?;
         let path = PathBuf::from(raw_path.as_ref());
 
-        let mut rules_dir = vec![FileRule::Type(FileType::Directory)];
-        match &dir_config.allowed_dirs {
-            None => {}
-            Some(allowed) if allowed.is_empty() => rules_dir.push(FileRule::None),
-            Some(allowed) => {
-                let compiled = crate::config::compile_match_rules(allowed)?;
-                rules_dir.push(FileRule::Name(compiled));
-            }
-        };
-
-        let mut rules_file = vec![FileRule::Type(FileType::File)];
-        match &dir_config.allowed_files {
-            None => {}
-            Some(allowed) if allowed.is_empty() => rules_file.push(FileRule::None),
-            Some(allowed) => {
-                let compiled = crate::config::compile_match_rules(allowed)?;
-                rules_file.push(FileRule::Name(compiled));
-            }
-        };
-
-        // recursive ignore only applies on directories anyway, no need to ignore FileType::File here
-        let mut recursive_ignore_children = FileRule::Any;
-        if !dir_config.recursive_ignore_children.is_empty() {
-            let compiled =
-                crate::config::compile_match_rules(&dir_config.recursive_ignore_children)?;
-            recursive_ignore_children = FileRule::Name(compiled);
+        let mut rules_dir = vec![FileMatchRule::Type(FileType::Directory)];
+        if let Some(rules) = &dir_config.allowed_dirs {
+            rules_dir.push(rules::compile_config_rules(rules)?);
         }
 
-        let rules = FileRule::MergeOr(vec![
-            FileRule::MergeAnd(rules_dir),
-            FileRule::MergeAnd(rules_file),
+        let mut rules_file = vec![FileMatchRule::Type(FileType::File)];
+        if let Some(rules) = &dir_config.allowed_files {
+            rules_file.push(rules::compile_config_rules(rules)?);
+        }
+
+        // recursive ignore only applies on directories anyway, no need to ignore FileType::File here
+        let recursive_ignore_children =
+            rules::compile_config_rules(&dir_config.recursive_ignore_children)?;
+
+        let rules = FileMatchRule::MergeOr(vec![
+            FileMatchRule::MergeAnd(rules_dir),
+            FileMatchRule::MergeAnd(rules_file),
         ]);
         directories.push(DirectoryChecker {
             path,

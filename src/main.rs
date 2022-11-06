@@ -13,6 +13,7 @@ mod checker;
 mod cli;
 mod commands;
 mod config;
+mod rules;
 
 fn main() -> anyhow::Result<()> {
     let cli: CLI = CLI::parse();
@@ -28,7 +29,7 @@ fn main() -> anyhow::Result<()> {
             let xdg_dirs = xdg::BaseDirectories::with_prefix("shinydir")?;
             let file_path = xdg_dirs.get_config_file("shinydir.toml");
             if !file_path.try_exists().unwrap_or(true) {
-                eprintln!("Creating default configuration because it doesn't exist..");
+                eprintln!("Copying default configuration because no config file was found...");
                 let mut file = File::create(&file_path)?;
                 let default_config = include_str!("../shinydir.toml").as_bytes();
                 file.write_all(default_config)?;
