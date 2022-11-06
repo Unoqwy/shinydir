@@ -1,6 +1,6 @@
 [package]
 name = "shinydir"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "CLI tool to enforce clean directories by setting rules"
 repository = "https://github.com/Unoqwy/shinydir"

@@ -30,6 +30,9 @@ fn main() -> anyhow::Result<()> {
             let file_path = xdg_dirs.get_config_file("shinydir.toml");
             if !file_path.try_exists().unwrap_or(true) {
                 eprintln!("Copying default configuration because no config file was found...");
+                if let Some(parent) = file_path.parent() {
+                    fs::create_dir_all(parent)?;
+                }
                 let mut file = File::create(&file_path)?;
                 let default_config = include_str!("../shinydir.toml").as_bytes();
                 file.write_all(default_config)?;
