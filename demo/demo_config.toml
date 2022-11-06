@@ -1,6 +1,7 @@
 [settings]
 color = true
 use-unicode = true
+hide-ok-directories = true
 
 [dir."$HOME"]
 allowed-dirs = [

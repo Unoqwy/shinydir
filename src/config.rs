@@ -17,10 +17,15 @@ pub struct Config {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Settings {
+    /// Whether to use colors in the terminal output
     #[serde(default = "default_true")]
     pub color: bool,
+    /// Whether to use unicode in terminal output
     #[serde(rename = "use-unicode", default = "default_true")]
     pub unicode: bool,
+    /// Whether to hide directories (and automove rules) when they are all good
+    #[serde(default = "default_true")]
+    pub hide_ok_directories: bool,
 }
 
 /// Configuration for a directory

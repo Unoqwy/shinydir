@@ -70,9 +70,11 @@ pub fn execute(
 
     // Get entries to move
     let mut results = automove.run();
+    let results_len = results.len();
 
     // Print space after info message
-    if (script_warning || dry_run) && !list {
+    let has_info = script_warning || dry_run;
+    if has_info && !list {
         eprintln!("");
     }
 
@@ -128,16 +130,17 @@ pub fn execute(
     }
 
     // Display output
-    let mut first_it = true;
+    let mut first_entry = true;
+    let mut hidden = 0;
+    let mut any_move = false;
     for result in results {
-        if first_it {
-            first_it = false;
-        } else if !list {
-            println!("");
-        }
-
         match result {
             AutoMoveResult::DirDoesNotExist { rule } if !list => {
+                if first_entry {
+                    first_entry = false;
+                } else {
+                    println!("");
+                }
                 let display_name = if rule.custom_name.is_none() && config.settings.color {
                     format!("{}", rule.display_name().italic())
                 } else {
@@ -165,15 +168,54 @@ pub fn execute(
                     if !line_entries.is_empty() {
                         println!("{}", line_entries.join("\n"));
                     }
+                } else if config.settings.hide_ok_directories && entries.is_empty() {
+                    hidden += 1;
                 } else {
+                    if first_entry {
+                        first_entry = false;
+                    } else {
+                        println!("");
+                    }
                     print_entries(&config.settings, rule, entries);
+                    any_move = true;
                 }
             }
             _ => {}
         };
     }
 
-    if config.automove.force_dry_run {
+    if hidden > 0 && !list {
+        if hidden != results_len {
+            println!("");
+        }
+        if config.settings.color {
+            println!(
+                "{} {}",
+                if config.settings.unicode {
+                    format!("\u{f00c} {} rules", hidden)
+                } else {
+                    format!("{} rules", hidden)
+                }
+                .bright_white()
+                .bold()
+                .italic(),
+                "were hidden from the output (nothing to move)"
+                    .bright_white()
+                    .italic(),
+            );
+        } else {
+            println!(
+                "{} rules were hidden from the output (nothing to move)",
+                if config.settings.unicode {
+                    format!("\u{f00c} {}", hidden)
+                } else {
+                    format!("{}", hidden)
+                },
+            );
+        }
+    }
+
+    if config.automove.force_dry_run && any_move {
         if config.settings.color {
             eprintln!("\n\n{}", "No files were actually moved as you are a new user. Please refer to the \"Info!\" note at the beginning of this output.".italic());
         } else {
@@ -279,7 +321,7 @@ fn print_entries(
         println!(
             "{} {} {}",
             arrow.black(),
-            "Moved To".white().bold(),
+            "Moved To".bright_white().bold(),
             tmp.join(&format!("{}", ", ".bright_black()))
         );
     } else {

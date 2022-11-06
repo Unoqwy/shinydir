@@ -6,6 +6,10 @@
 color = true # color terminal output
 use-unicode = true # use fancy symbols in terminal output. If false defaults to ascii text
 
+hide-ok-directories = true # hide directories (and automove rules) when they are all good
+                           # if true, it will hide from the output directories that would
+                           # otherwise show with a green checkmark (or "OK" in uncolored mode)
+
 #----------------------------#
 #         Directories        #
 #----------------------------#
