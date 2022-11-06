@@ -147,7 +147,7 @@ impl AutoMoveRule {
                         .output();
                     if let Err(err) = output {
                         result_entries.push(Err(format_err!(
-                            "Could not execute to_script for '{}': {}: {}",
+                            "Could not execute to-script for '{}': {}: {}",
                             dir_entry.file_name().to_string_lossy(),
                             to_script.to_string_lossy(),
                             err

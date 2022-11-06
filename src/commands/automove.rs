@@ -37,9 +37,9 @@ pub fn execute(
     if script_warning {
         // print on stderr to not affect pipe input (e.g. when using --list)
         if config.settings.color {
-            eprintln!("{} Your auto-move rules are configured to call scripts {}. If execution time gets too long, {}.", "Heads up!".bright_red().bold(), "(to_script)".white().dimmed(), "scripts are the cause".bold());
+            eprintln!("{} Your auto-move rules are configured to call scripts {}. If execution time gets too long, {}.", "Heads up!".bright_red().bold(), "(to-script)".white().dimmed(), "scripts are the cause".bold());
         } else {
-            eprintln!("Heads up! Your auto-move rules are configured to call scripts (to_script). If execution time gets too long, scripts are the cause.");
+            eprintln!("Heads up! Your auto-move rules are configured to call scripts (to-script). If execution time gets too long, scripts are the cause.");
         }
     }
 

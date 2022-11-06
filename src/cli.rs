@@ -24,6 +24,7 @@ pub enum Commands {
         list: bool,
     },
     /// Automatically move misplaced files according to set rules
+    #[command(aliases = ["au", "aumove"])]
     AutoMove {
         /// Parent directory. Leave blank to check all configured directories
         target: Option<PathBuf>,
