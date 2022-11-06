@@ -42,6 +42,8 @@ The power of shinydir comes from your own configuration, make sure to tailor the
 [settings]
 color = true # Use colors in terminal output
 use-unicode = true # Use fancy unicode chars in terminal output
+hide-ok-directories = true # Hide directories (and auto-move rules) from output
+                           # when there are no misplaced files/nothing to move
 ```
 
 ### Directory Rules
