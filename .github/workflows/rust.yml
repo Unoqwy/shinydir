@@ -28,8 +28,8 @@ jobs:
           target/            
         key: ${{ runner.os }}-debug-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: ${{ runner.os }}-debug-
-    - name: Run tests
-      run: cargo test --verbose
+    - run: cargo fmt --check
+    - run: cargo test --verbose
   build:
     strategy:
       matrix:
