@@ -35,11 +35,11 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            binary: shinydir
+            binary: shd
           - os: windows-latest
-            binary: shinydir.exe
+            binary: shd.exe
           - os: macos-latest
-            binary: shinydir            
+            binary: shd            
     runs-on: ${{matrix.os}}
     steps:
       - uses: actions/checkout@v2
