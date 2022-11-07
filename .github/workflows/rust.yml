@@ -16,6 +16,18 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: Set up cargo cache
+      uses: actions/cache@v3
+      continue-on-error: false
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/            
+        key: ${{ runner.os }}-debug-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: ${{ runner.os }}-debug-
     - name: Run tests
       run: cargo test --verbose
   build:
@@ -47,4 +59,5 @@ jobs:
       - uses: actions/upload-artifact@v3
         with:
           name: ${{ runner.os }}-${{ matrix.binary }}
-          path: target/${{ matrix.binary }}
+          path: target/release/${{ matrix.binary }}
+          if-no-files-found: error
