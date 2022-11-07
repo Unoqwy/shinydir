@@ -1,6 +1,5 @@
 use std::ffi::OsString;
 use std::fs::{self, Metadata};
-use std::os::unix::prelude::OsStringExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -179,16 +178,7 @@ impl AutoMoveRule {
                         continue;
                     }
                     let output = output.unwrap();
-                    let utf8_filename = String::from_utf8_lossy(&output.stdout);
-                    let utf8_filename_trimmed = utf8_filename.trim_end();
-                    let trim_end_bytes = utf8_filename.len() - utf8_filename_trimmed.len();
-                    let trim_start_bytes =
-                        utf8_filename_trimmed.len() - utf8_filename_trimmed.trim_start().len();
-                    output_filename = OsString::from_vec(
-                        (&output.stdout[trim_start_bytes
-                            ..(output.stdout.len() - trim_start_bytes) - trim_end_bytes])
-                            .to_vec(),
-                    );
+                    output_filename = command_output_to_filename(&output.stdout);
                 }
 
                 let move_to = if Path::new(&output_filename).is_absolute() {
@@ -212,6 +202,22 @@ impl AutoMoveRule {
             entries: result_entries,
         }
     }
+}
+
+fn command_output_to_filename(mut out: &[u8]) -> OsString {
+    while out.first().map(u8::is_ascii_whitespace) == Some(true) {
+        out = &out[1..]
+    }
+    while out.last().map(u8::is_ascii_whitespace) == Some(true) {
+        out = &out[..out.len() - 1]
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::prelude::OsStringExt;
+        OsString::from_vec(out.to_vec())
+    }
+    #[cfg(not(unix))]
+    OsString::from(String::from_utf8_lossy(out).to_string())
 }
 
 /// Sets up a [`AutoMove`] from config
@@ -246,4 +252,10 @@ pub fn from_config(
 
     rules.sort_by_cached_key(|rule| rule.display_name());
     Ok(AutoMove { parent, rules })
+}
+
+#[test]
+fn test_output_to_filename() {
+    assert_eq!("hello", command_output_to_filename(b"  hello \n"));
+    assert_eq!("hé", command_output_to_filename(b"h\xC3\xA9"));
 }
