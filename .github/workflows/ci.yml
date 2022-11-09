@@ -22,7 +22,7 @@ env:
 
 jobs:
   test:
-    name: Check & Test
+    name: Test
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -38,7 +38,6 @@ jobs:
           target/
         key: ${{ runner.os }}-check-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: ${{ runner.os }}-check-
-    - run: cargo check --verbose
     - run: cargo test --verbose
   lint:
     name: Lint
