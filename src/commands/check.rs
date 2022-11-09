@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use colored::Colorize;
 
@@ -8,25 +8,15 @@ use crate::config::{AutoMoveReportInfo, Config, Settings};
 
 pub fn execute(
     config: &Config,
-    config_dir: PathBuf,
+    config_dir: &Path,
     target: Option<PathBuf>,
     list: bool,
 ) -> anyhow::Result<()> {
     // Setup checker
     let parent = target.map(fs::canonicalize).transpose()?;
-    let checker = crate::checker::from_config(&config, parent.clone())?;
+    let checker = crate::checker::from_config(config, parent.clone())?;
 
-    if checker.directories.is_empty() {
-        if config.settings.color {
-            eprintln!(
-                "{} No directories were configured to be checked.",
-                "(!)".bold()
-            );
-        } else {
-            eprintln!("(!) No directories were configured to be checked.");
-        }
-        return Ok(());
-    }
+    checker.check_empty(config)?;
 
     // Run & display results
     let results = checker.run();
@@ -52,15 +42,15 @@ pub fn execute(
                 if first_entry {
                     first_entry = false;
                 } else {
-                    println!("");
+                    println!();
                 }
-                print_report(&config.settings, report);
+                print_report(&config.settings, &report);
             }
         } else if !list {
             if first_entry {
                 first_entry = false;
             } else {
-                println!("");
+                println!();
             }
             if config.settings.color {
                 eprintln!(
@@ -82,33 +72,9 @@ pub fn execute(
     if hidden > 0 {
         footer_sep = true;
         if results_len != hidden {
-            println!("");
+            println!();
         }
-        if config.settings.color {
-            println!(
-                "{} {}",
-                if config.settings.unicode {
-                    format!("\u{f00c} {} directories", hidden)
-                } else {
-                    format!("{} directories", hidden)
-                }
-                .bright_white()
-                .bold()
-                .italic(),
-                "were hidden from the output (no misplaced children)"
-                    .bright_white()
-                    .italic(),
-            );
-        } else {
-            println!(
-                "{} directories were hidden from the output (no misplaced children)",
-                if config.settings.unicode {
-                    format!("\u{f00c} {}", hidden)
-                } else {
-                    format!("{}", hidden)
-                },
-            );
-        }
+        show_hidden_info(config, hidden);
     }
 
     // Automove info
@@ -116,7 +82,7 @@ pub fn execute(
     match config.automove.report_info {
         AutoMoveReportInfo::Any if automove.would_move_any() => {
             if !footer_sep && results_len != hidden {
-                println!("");
+                println!();
             }
             if config.settings.color {
                 println!(
@@ -132,7 +98,7 @@ pub fn execute(
             let count = automove.count_move();
             if count > 0 {
                 if !footer_sep {
-                    println!("");
+                    println!();
                 }
                 if config.settings.color {
                     println!(
@@ -155,7 +121,35 @@ pub fn execute(
     Ok(())
 }
 
-fn print_report(settings: &Settings, report: Report) {
+fn show_hidden_info(config: &Config, hidden: usize) {
+    if config.settings.color {
+        println!(
+            "{} {}",
+            if config.settings.unicode {
+                format!("\u{f00c} {} directories", hidden)
+            } else {
+                format!("{} directories", hidden)
+            }
+            .bright_white()
+            .bold()
+            .italic(),
+            "were hidden from the output (no misplaced children)"
+                .bright_white()
+                .italic(),
+        );
+    } else {
+        println!(
+            "{} directories were hidden from the output (no misplaced children)",
+            if config.settings.unicode {
+                format!("\u{f00c} {}", hidden)
+            } else {
+                format!("{}", hidden)
+            },
+        );
+    }
+}
+
+fn print_report(settings: &Settings, report: &Report) {
     if report.issues.is_empty() {
         let checkmark = if settings.unicode { "\u{f00c}" } else { "OK" };
         if settings.color {
@@ -163,7 +157,7 @@ fn print_report(settings: &Settings, report: Report) {
                 "{} {}",
                 report.path.to_string_lossy().blue(),
                 checkmark.green().bold()
-            )
+            );
         } else {
             println!("{} {}", report.path.to_string_lossy(), checkmark);
         }
@@ -171,7 +165,7 @@ fn print_report(settings: &Settings, report: Report) {
     }
 
     let xmark = if settings.unicode { "\u{f467}" } else { "X" };
-    let total_files = report.issues.iter().count();
+    let total_files = report.issues.len();
     let misplaced_files_str = format!("{} misplaced files", total_files);
     if settings.color {
         println!(
@@ -190,9 +184,9 @@ fn print_report(settings: &Settings, report: Report) {
     }
 
     let (directories_str, directories_count) =
-        joined_rel_files(settings, &report, |issue| issue.file_metadata().is_dir());
+        joined_rel_files(settings, report, |issue| issue.file_metadata().is_dir());
     let (files_str, files_count) =
-        joined_rel_files(settings, &report, |issue| issue.file_metadata().is_file());
+        joined_rel_files(settings, report, |issue| issue.file_metadata().is_file());
     if settings.color {
         if directories_count > 0 {
             println!(
@@ -230,8 +224,8 @@ where
         .issues
         .iter()
         .filter(predicate)
-        .flat_map(|issue| issue.path().strip_prefix(&report.path).ok())
-        .map(|path| path.to_string_lossy());
+        .filter_map(|issue| issue.path().strip_prefix(&report.path).ok())
+        .map(std::path::Path::to_string_lossy);
     if settings.color {
         let mut tmp = it
             .map(|path| format!("{}", path.white()))

@@ -31,6 +31,7 @@ pub struct Settings {
 /// Configuration for a directory
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default, rename_all = "kebab-case")]
+#[allow(clippy::module_name_repetitions)]
 pub struct DirectoryConfig {
     pub recursive: bool,
     #[serde(alias = "recursive-ignore")]
@@ -52,6 +53,7 @@ pub enum MatchRule {
 /// Auto-Move configuration
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
+#[allow(clippy::module_name_repetitions)]
 pub struct AutoMoveConfig {
     /// Whether to show "scripts may slow down the execution" warning
     #[serde(default)]
