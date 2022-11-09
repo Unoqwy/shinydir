@@ -16,7 +16,7 @@ anyhow = "1.0"
 shellexpand = "2.1"
 clap = { version = "4.0", features = ["derive"] }
 colored = "2.0"
-xdg = "2.4"
+directories = "4.0"
 
 [[bin]]
 path = "src/main.rs"

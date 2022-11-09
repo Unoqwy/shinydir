@@ -5,6 +5,7 @@ use std::path::PathBuf;
 
 use clap::Parser;
 
+use anyhow::Context;
 use cli::{Commands, CLI};
 use config::Config;
 
@@ -26,8 +27,9 @@ fn main() -> anyhow::Result<()> {
     let config_path = match config_path {
         Some(path) => path,
         None => {
-            let xdg_dirs = xdg::BaseDirectories::with_prefix("shinydir")?;
-            let file_path = xdg_dirs.get_config_file("shinydir.toml");
+            let project = directories::ProjectDirs::from("", "", "Shiny Dir")
+                .with_context(|| "unable to find config directory")?;
+            let file_path = project.config_dir().join("shinydir.toml");
             if !file_path.try_exists().unwrap_or(true) {
                 eprintln!("Copying default configuration because no config file was found...");
                 if let Some(parent) = file_path.parent() {
