@@ -31,7 +31,7 @@ pub fn execute(
     // Move files
     for result in &mut results {
         if let AutoMoveResult::Ok { entries, .. } = result {
-            process_automove_result_entry(config, &mut dry_run, entries);
+            process_automove_result_entry(config, dry_run, entries);
         }
     }
 
@@ -138,7 +138,7 @@ fn show_hidden_info(config: &Config, hidden: usize) {
 
 fn process_automove_result_entry(
     config: &Config,
-    dry_run: &mut bool,
+    dry_run: bool,
     entries: &mut Vec<Result<AutoMoveResultEntry, Error>>,
 ) {
     for entry_res in entries {
@@ -147,7 +147,7 @@ fn process_automove_result_entry(
         } else {
             continue;
         };
-        if !*dry_run {
+        if !dry_run {
             if let Some(parent) = entry.move_to.parent() {
                 if let Err(err) = fs::create_dir_all(parent).map_err(|err| {
                     anyhow::format_err!(
@@ -171,7 +171,7 @@ fn process_automove_result_entry(
                 entry.move_to.to_string_lossy(),
                 err
             )),
-            _ if !*dry_run => fs::rename(&entry.file, &entry.move_to)
+            _ if !dry_run => fs::rename(&entry.file, &entry.move_to)
                 .map_err(|err| {
                     anyhow::format_err!(
                         "Couldn't move {} to {}: {}",
