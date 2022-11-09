@@ -1,19 +1,29 @@
-name: Rust
+name: CI
 
 on:
+  workflow_dispatch:
   push:
-    branches: [ "master" ]
+    branches:
+      - master
+    paths-ignore:
+      - 'README.md'
+      - 'demo/**'
+      - 'examples/**'
   pull_request:
-    branches: [ "master" ]
+    branches:
+      - master
+    paths-ignore:
+      - 'README.md'
+      - 'demo/**'
+      - 'examples/**'
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   test:
-
+    name: Check & Test
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v3
     - name: Set up cargo cache
@@ -25,21 +35,44 @@ jobs:
           ~/.cargo/registry/index/
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
-          target/            
-        key: ${{ runner.os }}-debug-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: ${{ runner.os }}-debug-
-    - run: cargo fmt --check
+          target/
+        key: ${{ runner.os }}-check-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: ${{ runner.os }}-check-
+    - run: cargo check --verbose
     - run: cargo test --verbose
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up cargo cache
+      uses: actions/cache@v3
+      continue-on-error: false
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-check-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: ${{ runner.os }}-check-
+    - run: cargo fmt --check
   build:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             binary: shd
+            binary-name: 'Linux_x86_64'
+          - os: macos-12
+            binary: shd
+            binary-name: 'Darwin_x86_64'
           - os: windows-latest
             binary: shd.exe
-          - os: macos-latest
-            binary: shd            
+            binary-name: 'Windows.exe'
+    name: "Build (${{ matrix.os }})"
     runs-on: ${{matrix.os}}
     steps:
       - uses: actions/checkout@v2
@@ -52,12 +85,12 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            target/            
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-
+            target/
+          key: ${{ runner.os }}-build-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-build-
       - run: cargo build --release
       - uses: actions/upload-artifact@v3
         with:
-          name: ${{ runner.os }}-${{ matrix.binary }}
+          name: shd_${{ matrix.binary-name }}
           path: target/release/${{ matrix.binary }}
           if-no-files-found: error
