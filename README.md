@@ -10,10 +10,14 @@ shinydir is a CLI tool that checks if directories are filled with allowed files 
 
 ### From crates.io
 
-The recommended way to install shinydir is from crates.io by using `cargo`.  
+The recommended way to install shinydir is from crates.io by using `cargo install`.  
 
 Make sure you have a recent version of the rust toolchain installed.  
 To build the latest published version and install it, run `crate install shinydir`.
+
+### From GitHub releases
+
+If you do not have the Rust toolchain installed or building on your machine is inconvenient, you can download compiled binaries directly from the latest release on Github.
 
 ### From source
 
@@ -25,8 +29,11 @@ Make sure you have a recent version of the rust toolchain installed.
 
 ## Usage
 
-The configuration file is located at `$XDG_CONFIG_HOME/shinydir/shinydir.toml` (i.e. `/home/user/.config/shinydir/shinydir.toml`). You may permanently change the configuration file path by setting the `SHINYDIR_CONFIG_FILE` environment variable.  
-The defaults are copied on first run if the file doesn't exist. You can check out the default configuration [here](./shinydir.toml).
+You may set the configuration file path with the environment variable `SHINYDIR_CONFIG_FILE` (using an absolute path is recommended). Otherwise, the default path depends on your operating system.
+* Linux: `$XDG_CONFIG_HOME/shinydir/shinydir.toml` (`$XDG_CONFIG_HOME` defaults to `$HOME/.config` if unset)
+* MacOS: `$HOME/Library/Application Support/Shiny-Dir/shinydir.toml`
+* Windows: `C:\Users\User\AppData\Roaming\Shiny Dir\config\shinydir.toml`
+The default config is copied on first run if the config file doesn't exist. You can check out the defaults [here](./shinydir.toml).
 
 The power of shinydir comes from your own configuration, make sure to tailor the config file to your liking before proceeding.
 
