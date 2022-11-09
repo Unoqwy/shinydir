@@ -33,7 +33,10 @@ You may set the configuration file path with the environment variable `SHINYDIR_
 * Linux: `$XDG_CONFIG_HOME/shinydir/shinydir.toml` (`$XDG_CONFIG_HOME` defaults to `$HOME/.config` if unset)
 * MacOS: `$HOME/Library/Application Support/Shiny-Dir/shinydir.toml`
 * Windows: `C:\Users\User\AppData\Roaming\Shiny Dir\config\shinydir.toml`
-The default config is copied on first run if the config file doesn't exist. You can check out the defaults [here](./shinydir.toml).
+
+The default config is copied on first run if the config file doesn't exist.You can check out the defaults [here](./shinydir.toml).
+
+---
 
 The power of shinydir comes from your own configuration, make sure to tailor the config file to your liking before proceeding.
 
