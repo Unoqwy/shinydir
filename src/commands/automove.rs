@@ -149,14 +149,12 @@ fn process_automove_result_entry(
         };
         if !dry_run {
             if let Some(parent) = entry.move_to.parent() {
-                if let Err(err) = fs::create_dir_all(parent).map_err(|err| {
-                    anyhow::format_err!(
+                if let Err(err) = fs::create_dir_all(parent) {
+                    *entry_res = Err(anyhow::format_err!(
                         "Couldn't create directory {}: {}",
                         parent.to_string_lossy(),
                         err
-                    )
-                }) {
-                    *entry_res = Err(err);
+                    ));
                     continue;
                 }
             }
