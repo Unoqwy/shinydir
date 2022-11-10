@@ -57,6 +57,7 @@ jobs:
         key: ${{ runner.os }}-check-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: ${{ runner.os }}-check-
     - run: cargo fmt --check
+    - run: cargo clippy
   build:
     strategy:
       fail-fast: false

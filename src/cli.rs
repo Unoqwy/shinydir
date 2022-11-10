@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-pub struct CLI {
+pub struct Cli {
     /// Custom config file to use
     #[arg(short, long, value_name = "FILE")]
     pub config: Option<PathBuf>,

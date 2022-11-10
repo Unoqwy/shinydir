@@ -3,7 +3,8 @@ use std::fs::{self, Metadata};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use anyhow::format_err;
+use anyhow::{bail, format_err};
+use colored::Colorize;
 
 use crate::config::Config;
 use crate::rules::{self, FileMatchRule};
@@ -60,31 +61,54 @@ impl AutoMove {
     /// This doesn't actually move the files but each entry contains the
     /// current file path and the new wanted file path.
     pub fn run(&self) -> Vec<AutoMoveResult> {
-        let mut results = Vec::new();
-        for rule in self.rules.iter() {
-            if let Some(parent) = &self.parent {
-                if !rule.directory.starts_with(parent) {
-                    continue;
+        self.rules
+            .iter()
+            .filter(|rule| {
+                if let Some(parent) = &self.parent {
+                    rule.directory.starts_with(parent)
+                } else {
+                    true
                 }
-            }
-            results.push(rule.run());
-        }
-        results
+            })
+            .map(AutoMoveRule::run)
+            .collect()
     }
 
     /// Checks if any file would be moved if this were to be run
     pub fn would_move_any(&self) -> bool {
-        for rule in self.rules.iter() {
-            if rule.would_move() {
-                return true;
-            }
-        }
-        false
+        self.rules.iter().any(AutoMoveRule::would_move)
     }
 
     /// Counts how many files would be moved across rules if this were to be run
     pub fn count_move(&self) -> usize {
         self.rules.iter().fold(0, |a, b| a + b.count_move())
+    }
+
+    pub fn check_empty(&self, config: &Config) -> anyhow::Result<()> {
+        if self.rules.is_empty() {
+            let w = if config.settings.color {
+                "(!)".bold()
+            } else {
+                "(!)".into()
+            };
+            bail!("{} No auto-move rules were configured.", w)
+        }
+        Ok(())
+    }
+
+    ///Warn user about slow execution time
+    pub fn script_warning(&self, config: &Config) -> bool {
+        let script_warning = config.automove.script_warning
+            && self.rules.iter().any(|rule| rule.to_script.is_some());
+        if script_warning {
+            // print on stderr to not affect pipe input (e.g. when using --list)
+            if config.settings.color {
+                eprintln!("{} Your auto-move rules are configured to call scripts {}. If execution time gets too long, {}.", "Heads up!".bright_red().bold(), "(to-script)".white().dimmed(), "scripts are the cause".bold());
+            } else {
+                eprintln!("Heads up! Your auto-move rules are configured to call scripts (to-script). If execution time gets too long, scripts are the cause.");
+            }
+        }
+        script_warning
     }
 }
 
@@ -93,7 +117,7 @@ impl AutoMoveRule {
     pub fn display_name(&self) -> String {
         self.custom_name
             .clone()
-            .unwrap_or_else(|| self.directory.to_path_buf().to_string_lossy().to_string())
+            .unwrap_or_else(|| self.directory.to_string_lossy().to_string())
     }
 
     /// Returns entries that should be moved if it didn't encounter any error
@@ -206,10 +230,10 @@ impl AutoMoveRule {
 
 fn command_output_to_filename(mut out: &[u8]) -> OsString {
     while out.first().map(u8::is_ascii_whitespace) == Some(true) {
-        out = &out[1..]
+        out = &out[1..];
     }
     while out.last().map(u8::is_ascii_whitespace) == Some(true) {
-        out = &out[..out.len() - 1]
+        out = &out[..out.len() - 1];
     }
     #[cfg(unix)]
     {
@@ -223,11 +247,11 @@ fn command_output_to_filename(mut out: &[u8]) -> OsString {
 /// Sets up a [`AutoMove`] from config
 pub fn from_config(
     config: &Config,
-    config_dir: PathBuf,
+    config_dir: &Path,
     parent: Option<PathBuf>,
 ) -> anyhow::Result<AutoMove> {
     let mut rules = Vec::new();
-    for config_rule in config.automove.rules.iter() {
+    for config_rule in &config.automove.rules {
         let match_rules = rules::compile_config_rules(&config_rule.match_rules)?;
         rules.push(AutoMoveRule {
             custom_name: config_rule.name.clone(),
@@ -239,7 +263,7 @@ pub fn from_config(
                 if expanded_path.is_absolute() {
                     Some(expanded_path.to_path_buf())
                 } else {
-                    let mut path = config_dir.clone();
+                    let mut path = config_dir.to_path_buf();
                     path.push(expanded_path);
                     Some(path)
                 }
@@ -250,7 +274,7 @@ pub fn from_config(
         });
     }
 
-    rules.sort_by_cached_key(|rule| rule.display_name());
+    rules.sort_by_cached_key(AutoMoveRule::display_name);
     Ok(AutoMove { parent, rules })
 }
 

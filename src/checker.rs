@@ -1,8 +1,9 @@
-use std::fs::{self, DirEntry, Metadata};
-use std::path::{Path, PathBuf};
-
 use crate::config::Config;
 use crate::rules::{self, FileMatchRule, FileType};
+use anyhow::bail;
+use colored::Colorize;
+use std::fs::{self, DirEntry, Metadata};
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone)]
 pub struct Checker {
@@ -10,8 +11,24 @@ pub struct Checker {
     pub directories: Vec<DirectoryChecker>,
 }
 
+impl Checker {
+    pub fn check_empty(&self, config: &Config) -> anyhow::Result<()> {
+        if self.directories.is_empty() {
+            if config.settings.color {
+                bail!(
+                    "{} No directories were configured to be checked.",
+                    "(!)".bold()
+                );
+            }
+            bail!("(!) No directories were configured to be checked.");
+        }
+        Ok(())
+    }
+}
+
 /// Checker configuration for a directory
 #[derive(Debug, Clone)]
+#[allow(clippy::module_name_repetitions)]
 pub struct DirectoryChecker {
     /// Path of the directory
     pub path: PathBuf,
@@ -25,6 +42,7 @@ pub struct DirectoryChecker {
 
 /// Result from attempting to check a directory
 #[derive(Debug, Clone)]
+#[allow(clippy::module_name_repetitions)]
 pub enum CheckerResult {
     Ok(Report),
     MissingDirectory { path: PathBuf },
@@ -52,16 +70,17 @@ pub struct ReportIssue {
 impl Checker {
     /// Executes directory rules to get a list of misplaced files
     pub fn run(&self) -> Vec<CheckerResult> {
-        let mut results = Vec::new();
-        for directory in self.directories.iter() {
-            if let Some(parent) = &self.parent {
-                if !directory.path.starts_with(parent) {
-                    continue;
+        self.directories
+            .iter()
+            .filter(|directory| {
+                if let Some(parent) = &self.parent {
+                    directory.path.starts_with(parent)
+                } else {
+                    true
                 }
-            }
-            results.push(directory.check());
-        }
-        results
+            })
+            .map(DirectoryChecker::check)
+            .collect()
     }
 }
 
@@ -71,13 +90,13 @@ impl DirectoryChecker {
             Ok(md) if md.is_dir() => (),
             Ok(_) => {
                 return CheckerResult::NotADirectory {
-                    path: self.path.to_path_buf(),
-                }
+                    path: self.path.clone(),
+                };
             }
             Err(_) => {
                 return CheckerResult::MissingDirectory {
-                    path: self.path.to_path_buf(),
-                }
+                    path: self.path.clone(),
+                };
             }
         };
         self.check_dir(&self.path)
@@ -88,29 +107,27 @@ impl DirectoryChecker {
             Ok(entries) => entries,
             Err(_) => {
                 return CheckerResult::NotADirectory {
-                    path: self.path.to_path_buf(),
-                }
+                    path: self.path.clone(),
+                };
             }
         };
 
         let mut issues = Vec::new();
-        for entry in dir_entries {
-            if let Ok(entry) = entry {
-                if let Ok(Some(issue)) = self.rules.test_from_dir_entry(&entry) {
-                    issues.push(issue);
+        for entry in dir_entries.flatten() {
+            if let Ok(Some(issue)) = self.rules.test_from_dir_entry(&entry) {
+                issues.push(issue);
+            }
+            if self.recursive && entry.file_type().ok().map_or(false, |ft| ft.is_dir()) {
+                if self
+                    .recursive_ignore_rules
+                    .matches_dir_entry(&entry)
+                    .ok()
+                    .unwrap_or(false)
+                {
+                    continue;
                 }
-                if self.recursive && entry.file_type().ok().map_or(false, |ft| ft.is_dir()) {
-                    if self
-                        .recursive_ignore_rules
-                        .matches_dir_entry(&entry)
-                        .ok()
-                        .unwrap_or(false)
-                    {
-                        continue;
-                    }
-                    if let CheckerResult::Ok(report) = self.check_dir(&entry.path()) {
-                        issues.extend(report.issues);
-                    }
+                if let CheckerResult::Ok(report) = self.check_dir(&entry.path()) {
+                    issues.extend(report.issues);
                 }
             }
         }
@@ -138,20 +155,17 @@ impl CheckerResult {
     pub fn path(&self) -> &Path {
         match self {
             CheckerResult::Ok(report) => &report.path,
-            CheckerResult::MissingDirectory { path } => path,
-            CheckerResult::NotADirectory { path } => path,
+            CheckerResult::NotADirectory { path } | CheckerResult::MissingDirectory { path } => {
+                path
+            }
         }
     }
 
     pub fn format_err(&self) -> String {
         match self {
-            CheckerResult::Ok(_) => format!("Ok"),
-            CheckerResult::MissingDirectory { .. } => {
-                format!("Directory does not exist!")
-            }
-            CheckerResult::NotADirectory { .. } => {
-                format!("File is not a directory!")
-            }
+            CheckerResult::Ok(_) => "Ok".to_string(),
+            CheckerResult::MissingDirectory { .. } => "Directory does not exist!".to_string(),
+            CheckerResult::NotADirectory { .. } => "File is not a directory!".to_string(),
         }
     }
 }
@@ -169,7 +183,7 @@ impl ReportIssue {
 /// Sets up a [`Checker`] from config
 pub fn from_config(config: &Config, parent: Option<PathBuf>) -> anyhow::Result<Checker> {
     let mut directories = Vec::new();
-    for (dir_path, dir_config) in config.directories.iter() {
+    for (dir_path, dir_config) in &config.directories {
         let raw_path = shellexpand::env(dir_path)?;
         let path = PathBuf::from(raw_path.as_ref());
 

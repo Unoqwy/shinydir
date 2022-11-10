@@ -84,6 +84,7 @@ pub fn resolve_metadata(dir_entry: &fs::DirEntry) -> anyhow::Result<fs::Metadata
 }
 
 /// Compiles a list of configuration match rules into a [`FileMatchRule`] for efficient checks
+#[allow(clippy::module_name_repetitions)]
 pub fn compile_config_rules(rules: &Vec<config::MatchRule>) -> anyhow::Result<FileMatchRule> {
     if rules.is_empty() {
         // empty rules, meaning no file can be valid
