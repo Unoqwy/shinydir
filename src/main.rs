@@ -18,7 +18,17 @@ mod commands;
 mod config;
 mod rules;
 
-fn main() -> anyhow::Result<()> {
+fn main() {
+    match run() {
+        Ok(()) => (),
+        Err(e) => {
+            eprintln!("{}", e);
+            std::process::exit(1);
+        }
+    }
+}
+
+fn run() -> anyhow::Result<()> {
     let cli: Cli = Cli::parse();
 
     // Read config
