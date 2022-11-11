@@ -16,19 +16,14 @@ hide-ok-directories = true # hide directories (and automove rules) when they are
 
 [dir."$HOME"]
 allowed-dirs = [
-    { name = "Downloads" },
-    { name = "Pictures" },
-    { name = "Desktop" },
-    { name = "Videos" },
-    { name = "Music" },
-    { name = "Documents" },
+    { pattern = "^[A-Z][a-z]*$" }, # allow directories with a capitalized ascii name without whitespaces
     { pattern = "^\\." }, # allow any hidden directory
 ]
 allowed-files = [
     { pattern = "^\\." }, # allow any hidden file
 ]
 
-[dir."$HOME/Videos"]
+[dir."$XDG_VIDEOS_DIR"]
 recursive = true # sub-folders will have the same rules
 recursive-ignore-children = [
     # while performing recursive check, it will ignore these child directories
@@ -40,9 +35,10 @@ allowed-files = [
     { ext = "mp4" },
     { ext = "mov" },
     { ext = "mkv" },
+    { ext = "webm" },
 ]
 
-[dir."$HOME/Music"]
+[dir."$XDG_MUSIC_DIR"] # $XDG_MUSIC_DIR will be replaced with the path to the current user's Music directory
 recursive = true
 allowed-files = [
     { ext = "mp3" },
@@ -51,7 +47,7 @@ allowed-files = [
     { ext = "flac" },
 ]
 
-[dir."$HOME/Downloads"]
+[dir."$XDG_DOWNLOAD_DIR"]
 allowed-dirs = [] # empty 'allowed-dirs' mean no directory is valid
 # no 'allow-files' means any file is valid
 
@@ -82,7 +78,7 @@ force-dry-run = true # force dry run setting
 #     { ext = "mov" },
 #     { ext = "mkv" },
 # ]
-# to = "$HOME/Videos"
+# to = "$XDG_VIDEOS_DIR"
 
 # [[automove.rules]]
 # name = "Home-Music"
@@ -97,12 +93,12 @@ force-dry-run = true # force dry run setting
 
 # [[automove.rules]]
 # name = "Screenshots"
-# parent = "$HOME/Pictures/Screenshots"
+# parent = "$XDG_PICTURES_DIR/Screenshots"
 # match = [
 #     { ext = "png" },
 #     { ext = "jpg" },
 # ]
-# to = "$HOME/Pictures/Screenshots"
+# to = "XDG_PICTURES_DIR/Screenshots"
 # # pass each matched file to the following script that returns placement filename
 # # the script path is relative to the parent directory of this config file
 # # Note: `to` is still required! It will be the base path of any relative filename the script returns.
